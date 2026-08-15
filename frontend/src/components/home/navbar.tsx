@@ -6,24 +6,12 @@ import Link from 'next/link'
 import { site } from '@/data/site'
 
 export default function Navbar() {
-  const [scrollProgress, setScrollProgress] = useState(0)
   const [activeSection, setActiveSection] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)
     history.scrollRestoration = 'manual'
-  }, [])
-
-  useEffect(() => {
-    const onScroll = () => {
-      const vh = window.innerHeight
-      const y = window.scrollY
-      const raw = (y / vh - 0.23) / (0.30 - 0.23)
-      setScrollProgress(Math.min(1, Math.max(0, raw)))
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   useEffect(() => {
@@ -54,22 +42,22 @@ export default function Navbar() {
 
   const { links } = site.nav
 
-  const logoColor = `rgb(${255 - scrollProgress * 255}, ${255 - scrollProgress * 255}, ${255 - scrollProgress * 255})`
-  const navColor = `rgb(${255 - scrollProgress * 255}, ${255 - scrollProgress * 255}, ${255 - scrollProgress * 255})`
-  const navHover = scrollProgress > 0.5 ? '#D4AF37' : '#ffffff'
-  const bgColor = `rgba(255, 255, 255, ${scrollProgress})`
-  const borderColor = `rgba(212, 175, 55, ${scrollProgress * 0.1})`
-  const hamburgerColor = `rgb(${255 - scrollProgress * 255}, ${255 - scrollProgress * 255}, ${255 - scrollProgress * 255})`
+  const logoColor = 'rgb(22, 22, 22)'
+  const navColor = 'rgb(22, 22, 22)'
+  const navHover = '#B8941E'
+  const bgColor = 'rgba(240, 233, 224, 0.85)'
+  const borderColor = 'rgba(212, 175, 55, 0.15)'
+  const hamburgerColor = 'rgb(22, 22, 22)'
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50"
-      style={{ backgroundColor: bgColor, borderBottom: scrollProgress > 0 ? '1px solid ' + borderColor : 'none' }}
+      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
+      style={{ backgroundColor: bgColor, borderBottom: '1px solid ' + borderColor }}
     >
       <div className="max-w-7xl mx-auto px-6 md:px-8 h-20 flex items-center justify-between">
         <Link
           href="/"
-          className="font-[var(--font-poppins)] text-lg md:text-xl tracking-[0.1em] font-bold uppercase max-lg:absolute max-lg:left-1/2 max-lg:-translate-x-1/2 lg:-ml-[180px]"
+          className="font-[var(--font-poppins)] text-xl md:text-2xl tracking-[0.1em] font-bold max-lg:absolute max-lg:left-1/2 max-lg:-translate-x-1/2 lg:-ml-[180px]"
           style={{ color: logoColor }}
         >
           {site.brand.name}

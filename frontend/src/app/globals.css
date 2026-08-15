@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #000000;
-  --color-foreground: #ffffff;
+  --color-background: #F0E9E0;
+  --color-foreground: #161616;
   --color-gold: #D4AF37;
   --color-gold-light: #F0D68A;
   --color-gold-dark: #B8941E;
-  --color-muted: #888888;
-  --color-card: #111111;
-  --color-border: #222222;
+  --color-muted: #6e6557;
+  --color-card: #ffffff;
+  --color-border: #e3dac9;
   --font-sans: "Inter", sans-serif;
   --font-serif: "Playfair Display", serif;
   --font-poppins: "Poppins", sans-serif;
@@ -19,16 +19,16 @@ html {
 }
 
 body {
-  background: #000000;
-  color: #ffffff;
+  background: #F0E9E0;
+  color: #161616;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
-  background: rgba(212, 175, 55, 0.3);
-  color: #ffffff;
+  background: rgba(212, 175, 55, 0.35);
+  color: #161616;
 }
 
 @supports (scrollbar-width: thin) {
@@ -83,8 +83,8 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 /* Glass effects */
-.glass { background: rgba(17, 17, 17, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-.glass-light { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.glass-light { background: rgba(0, 0, 0, 0.04); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
 /* Smooth transitions for theme */
 *, *::before, *::after { transition-property: background-color, border-color; transition-duration: 200ms; }

@@ -2,11 +2,11 @@
 
 export default function Footer() {
   return (
-    <footer className="relative w-full bg-[#0a0a0a] border-t border-gold/10">
+    <footer className="relative w-full bg-[#eae1d2] border-t border-gold/15">
       <div className="max-w-7xl mx-auto px-6 py-12 md:py-16">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <h3 className="font-serif text-lg text-white tracking-widest">
+            <h3 className="font-serif text-lg text-foreground tracking-widest">
               TJ Photography
             </h3>
           </div>
@@ -39,8 +39,8 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 pt-8 border-t border-white/5 text-center">
-          <p className="text-white/30 text-[10px] tracking-[0.3em] uppercase">
+        <div className="mt-10 pt-8 border-t border-border text-center">
+          <p className="text-muted/60 text-[10px] tracking-[0.3em] uppercase">
             &copy; 2026 TJ Photography &nbsp;·&nbsp; All rights reserved &nbsp;·&nbsp; Designed by Bhushan Ahuja
           </p>
         </div>

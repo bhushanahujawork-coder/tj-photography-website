@@ -66,7 +66,7 @@ function AnimatedCounter({
         />
       )}
       <motion.span
-        className="relative font-serif text-3xl md:text-5xl tracking-wide bg-gradient-to-r from-gold-dark via-gold-light to-gold bg-clip-text text-transparent bg-[length:200%_100%] animate-shimmer inline-block"
+        className="relative font-serif text-3xl md:text-5xl tracking-wide bg-gradient-to-r from-[#7a5c10] via-[#d4af37] to-[#7a5c10] bg-clip-text text-transparent bg-[length:200%_100%] animate-shimmer inline-block"
         animate={done ? { scale: [1, 1.12, 1] } : { scale: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
@@ -91,13 +91,13 @@ export default function Statistics() {
   const bgY = useTransform(scrollYProgress, [0, 1], [0, 180])
 
   return (
-    <section className="relative py-10 md:py-14 bg-gradient-to-b from-background via-[#050505] to-background border-t border-white/5 overflow-hidden">
+    <section className="relative py-10 md:py-14 bg-gradient-to-b from-background via-[#f5efe5] to-background border-t border-border/60 overflow-hidden">
       <motion.div
         className="absolute inset-0 pointer-events-none"
         style={{
           y: bgY,
           background:
-            'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(212,175,55,0.08), transparent 70%), radial-gradient(ellipse 40% 40% at 85% 100%, rgba(212,175,55,0.04), transparent 70%), radial-gradient(rgba(212,175,55,0.05) 1px, transparent 1px)',
+            'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(212,175,55,0.14), transparent 70%), radial-gradient(ellipse 40% 40% at 85% 100%, rgba(212,175,55,0.08), transparent 70%), radial-gradient(rgba(212,175,55,0.09) 1px, transparent 1px)',
           backgroundSize: 'auto, auto, 28px 28px',
         }}
       />

@@ -2,14 +2,14 @@
 
 export default function ContactSection() {
   return (
-    <section id="contact" className="relative w-full bg-black py-16 md:py-20">
+    <section id="contact" className="relative w-full bg-[#eae1d2] py-16 md:py-20">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-10">
-          <h3 className="font-serif text-2xl md:text-3xl text-white tracking-wide">
+          <h3 className="font-serif text-2xl md:text-3xl text-foreground tracking-wide">
             Visit Our Office
           </h3>
           <div className="w-12 h-px bg-gold mx-auto mt-4 mb-2" />
-          <p className="text-white/40 text-sm font-light">
+          <p className="text-muted text-sm font-light">
             UNICORN PRIME, 414, Near Hona Showroom, Jamnagar - Lalpur Rd, Jamnagar, Gujarat 361006
           </p>
         </div>
@@ -33,7 +33,7 @@ export default function ContactSection() {
             <div className="flex flex-col gap-6 mb-8">
               <a
                 href="tel:09033320304"
-                className="flex items-center gap-4 text-white/60 hover:text-gold transition-colors duration-300"
+                className="flex items-center gap-4 text-foreground/70 hover:text-gold-dark transition-colors duration-300"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gold/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
@@ -45,7 +45,7 @@ export default function ContactSection() {
                 href="https://www.instagram.com/tj_photography_____/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-4 text-white/60 hover:text-gold transition-colors duration-300"
+                className="flex items-center gap-4 text-foreground/70 hover:text-gold-dark transition-colors duration-300"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gold/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />

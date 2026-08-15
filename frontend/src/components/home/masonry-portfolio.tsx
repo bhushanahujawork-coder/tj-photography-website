@@ -7,7 +7,7 @@ import ImageCard from '@/components/ui/image-card'
 
 export default function MasonryPortfolio() {
   return (
-    <section id="weddings" className="pt-8 md:pt-10 pb-12 md:pb-16 border-t border-white/5">
+    <section id="weddings" className="pt-8 md:pt-10 pb-12 md:pb-16 border-t border-border/60">
       <div className="max-w-7xl mx-auto px-6">
         <SectionHeading
           title={portfolioHeading.title}
@@ -15,7 +15,7 @@ export default function MasonryPortfolio() {
         />
       </div>
 
-      <div className="w-full bg-[#2a2a2a] p-[2px]">
+      <div className="w-full bg-[#e4dccd] p-[2px]">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-[2px]">
           {portfolio.map((image, i) => (
             <div
