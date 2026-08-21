@@ -6,8 +6,9 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 py-12 md:py-16">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <h3 className="font-serif text-lg text-foreground tracking-widest">
-              TJ Photography
+            <h3 className="flex items-baseline gap-1.5 font-[var(--font-poppins)] text-lg text-foreground tracking-[0.08em] uppercase">
+              <span className="font-bold">TJ</span>
+              <span className="font-medium">Photography</span>
             </h3>
           </div>
 

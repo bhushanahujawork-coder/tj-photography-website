@@ -88,6 +88,9 @@ export default function ImageCard({
         loading={priority ? undefined : 'lazy'}
         className="w-full h-full object-cover"
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
+        onDragStart={(e) => e.preventDefault()}
       />
     </div>
   )

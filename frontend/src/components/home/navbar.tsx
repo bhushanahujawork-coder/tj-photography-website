@@ -10,7 +10,9 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
-    window.scrollTo(0, 0)
+    if (!window.location.hash) {
+      window.scrollTo(0, 0)
+    }
     history.scrollRestoration = 'manual'
   }, [])
 
@@ -54,17 +56,18 @@ export default function Navbar() {
       className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
       style={{ backgroundColor: bgColor, borderBottom: '1px solid ' + borderColor }}
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-8 h-20 flex items-center justify-between">
+      <div className="mx-auto px-6 h-20 flex items-center justify-between">
         <Link
           href="/"
-          className="font-[var(--font-poppins)] text-xl md:text-2xl tracking-[0.1em] font-bold max-lg:absolute max-lg:left-1/2 max-lg:-translate-x-1/2 lg:-ml-[180px]"
-          style={{ color: logoColor }}
+          className="flex items-baseline gap-1.5 md:gap-2 font-[var(--font-poppins)] text-[19px] md:text-[23px] tracking-[0.08em] max-lg:absolute max-lg:left-1/2 max-lg:-translate-x-1/2"
+          style={{ color: logoColor, marginRight: '50px', marginLeft: '25px' }}
         >
-          {site.brand.name}
+          <span className="font-bold">TJ</span>
+          <span className="font-medium">PHOTOGRAPHY</span>
         </Link>
 
-        <div className="flex items-center gap-2 lg:-mr-[30px]">
-          <nav className="hidden lg:flex items-center gap-10">
+        <div className="flex items-center gap-2">
+          <nav className="hidden lg:flex items-center gap-10 ml-[-458px]">
             {links.map((link) => (
               <a
                 key={link.href}
@@ -98,15 +101,16 @@ export default function Navbar() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            className="fixed inset-0 bg-white z-50 flex flex-col"
+            className="fixed inset-0 bg-[#eae1d2] z-50 flex flex-col"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="flex items-center justify-between h-20 px-6 md:px-8">
-              <span className="font-[var(--font-poppins)] text-lg text-black tracking-[0.08em] font-medium">
-                {site.brand.name}
+            <div className="flex items-center justify-between h-20 px-6">
+              <span className="flex items-baseline gap-1.5 font-[var(--font-poppins)] text-base text-black tracking-[0.08em]">
+                <span className="font-bold">TJ</span>
+                <span className="font-medium">PHOTOGRAPHY</span>
               </span>
               <button
                 onClick={() => setMobileOpen(false)}

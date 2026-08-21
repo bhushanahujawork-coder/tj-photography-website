@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="#161616"/>
+  <rect x="40" y="40" width="720" height="920" fill="none" stroke="#D4AF37" stroke-opacity="0.35" stroke-width="2"/>
+  <circle cx="400" cy="430" r="140" fill="none" stroke="#D4AF37" stroke-opacity="0.5" stroke-width="2"/>
+  <circle cx="400" cy="430" r="96" fill="none" stroke="#D4AF37" stroke-opacity="0.3" stroke-width="1.5"/>
+  <text x="400" y="470" font-family="Georgia, serif" font-size="130" fill="#D4AF37" text-anchor="middle" letter-spacing="10">TJ</text>
+  <text x="400" y="610" font-family="Arial, sans-serif" font-size="28" fill="#eae1d2" text-anchor="middle" letter-spacing="14">STUDIO</text>
+  <text x="400" y="660" font-family="Arial, sans-serif" font-size="15" fill="#8a857e" text-anchor="middle" letter-spacing="6">PHOTO PLACEHOLDER</text>
+</svg>

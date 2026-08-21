@@ -12,8 +12,8 @@ export const site = {
     links: [
       { label: 'Weddings', href: '#weddings' },
       { label: 'Films', href: '/films' },
+      { label: 'About Us', href: '/about' },
       { label: 'Contact Us', href: '#contact' },
-      { label: 'About Us', href: '#about' },
     ] satisfies NavLink[],
     weddingLink: {
       label: 'Find My Wedding',
@@ -27,8 +27,8 @@ export const site = {
   footer: {
     quickLinks: [
       { label: 'Weddings', href: '#weddings' },
-      { label: 'Films', href: '#films' },
-      { label: 'About Us', href: '#about' },
+      { label: 'Films', href: '/films' },
+      { label: 'About Us', href: '/about' },
       { label: 'Contact Us', href: '#contact' },
       { label: 'Find My Wedding', href: '#wedding' },
     ] satisfies NavLink[],

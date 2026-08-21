@@ -15,41 +15,65 @@ function YoutubeCard({
   onOpen: (embedId: string, title: string) => void
 }) {
   const video = films[index]
+  const [useMaxres, setUseMaxres] = useState(true)
   const thumbnail = video.embedId
-    ? `https://img.youtube.com/vi/${video.embedId}/hqdefault.jpg`
+    ? `https://img.youtube.com/vi/${video.embedId}/${useMaxres ? 'maxresdefault' : 'hqdefault'}.jpg`
     : ''
+
+  const handleClick = () => {
+    if (video.embedId) onOpen(video.embedId, video.title)
+  }
 
   return (
     <div
-      className="relative aspect-video bg-[#1a1a1a] rounded-lg overflow-hidden group cursor-pointer border border-gold/10 hover:border-gold/40 transition-colors duration-500"
-      onClick={() => {
-        if (video.embedId) onOpen(video.embedId, video.title)
-      }}
+      className="relative group cursor-pointer"
+      onClick={handleClick}
     >
-      {thumbnail ? (
-        <>
-          <Image
-            src={thumbnail}
-            alt={video.title}
-            width={1280}
-            height={720}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
-            <div className="w-16 h-10 rounded-full bg-red-600/90 flex items-center justify-center group-hover:bg-red-500 transition-colors duration-300 shadow-lg shadow-red-600/30">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z" />
-              </svg>
+      <div className="film-card-scoop relative bg-[#f7f6f3] rounded-[18px] p-[13px] transition-shadow duration-500 group-hover:shadow-2xl group-hover:shadow-red-500/30">
+        <div className="relative aspect-[13/9] bg-[#1a1510] rounded-[16px] overflow-hidden">
+          {thumbnail ? (
+            <Image
+              src={thumbnail}
+              alt={video.title}
+              width={1280}
+              height={720}
+              onError={() => setUseMaxres(false)}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-white/40 text-[10px] tracking-wider">
+                {video.title}
+              </span>
             </div>
-          </div>
-        </>
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-white/40 text-xs tracking-wider">
-            {video.title}
-          </span>
+          )}
         </div>
-      )}
+
+        <div className="px-[11px] pt-[10px] pb-[18px]">
+          <h3 className="text-[15px] md:text-[19px] font-semibold text-[#1f2428] leading-tight">
+            {video.couple}
+          </h3>
+          <div className="mt-[20px] md:mt-[24px] h-px w-[195px] bg-[#e5e2dc]" />
+          <p className="mt-[12px] md:mt-[14px] text-[9px] md:text-[11px] leading-[1.5] text-[#8a857e] line-clamp-2">
+            {video.description}
+          </p>
+        </div>
+      </div>
+
+      <span className="absolute -right-4 -bottom-2 w-12 h-12 md:w-[72px] md:h-[72px] rounded-full bg-[#f7f6f3] shadow-lg flex items-center justify-center transition-all duration-300 group-hover:bg-[#FF0000] group-hover:shadow-xl group-hover:shadow-red-500/50">
+        <svg
+          className="w-5 h-5 md:w-6 md:h-6 text-[#1f2428] transition-colors duration-300 group-hover:text-white"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M7 17L17 7" />
+          <path d="M7 7h10v10" />
+        </svg>
+      </span>
     </div>
   )
 }
@@ -144,7 +168,7 @@ export default function FilmsPage() {
 
         <section className="py-12 md:py-16 px-0">
           <div className="w-full px-6 md:px-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {films.map((_, i) => (
                 <YoutubeCard key={i} index={i} onOpen={openFilm} />
               ))}

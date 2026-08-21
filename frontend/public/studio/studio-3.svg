@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750">
+  <rect width="600" height="750" fill="#161616"/>
+  <rect x="30" y="30" width="540" height="690" fill="none" stroke="#D4AF37" stroke-opacity="0.35" stroke-width="2"/>
+  <path d="M300 250 L335 320 L410 330 L355 380 L370 455 L300 420 L230 455 L245 380 L190 330 L265 320 Z" fill="none" stroke="#D4AF37" stroke-opacity="0.6" stroke-width="2"/>
+  <text x="300" y="570" font-family="Georgia, serif" font-size="52" fill="#eae1d2" text-anchor="middle" letter-spacing="10">TJ</text>
+  <text x="300" y="615" font-family="Arial, sans-serif" font-size="15" fill="#8a857e" text-anchor="middle" letter-spacing="8">STUDIO</text>
+</svg>
