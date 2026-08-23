@@ -33,20 +33,20 @@ const links = [
 
 export default function ContactSection() {
   return (
-    <section id="contact" className="relative w-full bg-[#eae1d2] py-16 md:py-20">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="contact" className="relative w-full bg-[#eae1d2] py-16 md:py-20 2xl:py-28">
+      <div className="max-w-7xl mx-auto px-6 2xl:max-w-[1400px] 3xl:max-w-[1700px]">
         <div className="text-center mb-10 md:mb-12">
-          <span className="text-gold-dark text-[11px] md:text-xs tracking-[0.3em] uppercase font-medium">
+          <span className="text-gold-dark text-[11px] md:text-xs 2xl:text-sm tracking-[0.3em] uppercase font-medium">
             Visit Our Office
           </span>
-          <h2 className="mt-3 font-serif text-3xl md:text-4xl text-foreground tracking-wide">
+          <h2 className="mt-3 font-serif text-3xl md:text-4xl xl:text-5xl text-foreground tracking-wide">
             Find TJ Photography in Jamnagar
           </h2>
           <div className="w-14 h-px bg-gold-dark mx-auto mt-5" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 items-stretch">
-          <div className="relative w-full min-h-[300px] md:min-h-[420px] rounded-xl overflow-hidden border border-gold/25 shadow-lg shadow-black/10">
+          <div className="relative w-full min-h-[300px] md:min-h-[420px] 2xl:min-h-[500px] rounded-xl overflow-hidden border border-gold/25 shadow-lg shadow-black/10">
             <span aria-hidden className="absolute top-0 left-0 z-10 w-5 h-5 border-t-2 border-l-2 border-gold rounded-tl-xl" />
             <span aria-hidden className="absolute top-0 right-0 z-10 w-5 h-5 border-t-2 border-r-2 border-gold rounded-tr-xl" />
             <span aria-hidden className="absolute bottom-0 left-0 z-10 w-5 h-5 border-b-2 border-l-2 border-gold rounded-bl-xl" />

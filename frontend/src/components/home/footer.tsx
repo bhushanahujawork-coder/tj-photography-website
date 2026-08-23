@@ -3,10 +3,10 @@
 export default function Footer() {
   return (
     <footer className="relative w-full bg-[#eae1d2] border-t border-gold/15">
-      <div className="max-w-7xl mx-auto px-6 py-12 md:py-16">
+      <div className="max-w-7xl mx-auto px-6 py-12 md:py-16 2xl:max-w-[1400px] 3xl:max-w-[1700px]">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <h3 className="flex items-baseline gap-1.5 font-[var(--font-poppins)] text-lg text-foreground tracking-[0.08em] uppercase">
+            <h3 className="flex items-baseline gap-1.5 font-[var(--font-poppins)] text-lg xl:text-xl text-foreground tracking-[0.08em] uppercase">
               <span className="font-bold">TJ</span>
               <span className="font-medium">Photography</span>
             </h3>

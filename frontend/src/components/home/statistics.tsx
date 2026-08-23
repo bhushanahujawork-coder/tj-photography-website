@@ -66,7 +66,7 @@ function AnimatedCounter({
         />
       )}
       <motion.span
-        className="relative font-serif text-3xl md:text-5xl tracking-wide bg-gradient-to-r from-[#7a5c10] via-[#d4af37] to-[#7a5c10] bg-clip-text text-transparent bg-[length:200%_100%] animate-shimmer inline-block"
+        className="relative font-serif text-3xl md:text-5xl xl:text-6xl 3xl:text-7xl tracking-wide bg-gradient-to-r from-[#7a5c10] via-[#d4af37] to-[#7a5c10] bg-clip-text text-transparent bg-[length:200%_100%] animate-shimmer inline-block"
         animate={done ? { scale: [1, 1.12, 1] } : { scale: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
@@ -75,7 +75,7 @@ function AnimatedCounter({
         {suffix}
       </motion.span>
       <motion.p
-        className="text-muted text-sm mt-2 font-light tracking-wide"
+        className="text-muted text-sm xl:text-base mt-2 font-light tracking-wide"
         initial={{ opacity: 0, y: 8 }}
         animate={started ? { opacity: 1, y: 0 } : {}}
         transition={{ delay: delay / 1000 + 1.2, duration: 0.6, ease: 'easeOut' }}
@@ -91,7 +91,7 @@ export default function Statistics() {
   const bgY = useTransform(scrollYProgress, [0, 1], [0, 180])
 
   return (
-    <section className="relative py-10 md:py-14 bg-gradient-to-b from-background via-[#f5efe5] to-background border-t border-border/60 overflow-hidden">
+    <section className="relative py-10 md:py-14 2xl:py-20 bg-gradient-to-b from-background via-[#f5efe5] to-background border-t border-border/60 overflow-hidden">
       <motion.div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -101,9 +101,9 @@ export default function Statistics() {
           backgroundSize: 'auto, auto, 28px 28px',
         }}
       />
-      <div className="max-w-6xl mx-auto px-6 relative">
+      <div className="max-w-6xl mx-auto px-6 relative 2xl:max-w-[1400px] 3xl:max-w-[1700px]">
         <motion.h2
-          className="font-serif text-2xl md:text-4xl text-center text-foreground mb-8 md:mb-10 tracking-wide"
+          className="font-serif text-2xl md:text-4xl xl:text-5xl text-center text-foreground mb-8 md:mb-10 tracking-wide"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}

@@ -30,7 +30,7 @@ export default function SoulCinema() {
 
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
           <motion.h2
-            className="font-serif text-3xl md:text-6xl text-white tracking-wide"
+            className="font-serif text-3xl md:text-6xl 2xl:text-7xl text-white tracking-wide"
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -48,7 +48,7 @@ export default function SoulCinema() {
           />
 
           <motion.p
-            className="text-white/70 text-sm md:text-lg max-w-2xl mt-5 md:mt-6 font-light leading-relaxed"
+            className="text-white/70 text-sm md:text-lg 2xl:text-xl max-w-2xl 2xl:max-w-3xl mt-5 md:mt-6 font-light leading-relaxed"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import Link from 'next/link'
 import { site } from '@/data/site'
 
@@ -44,58 +45,61 @@ export default function Navbar() {
 
   const { links } = site.nav
 
-  const logoColor = 'rgb(22, 22, 22)'
-  const navColor = 'rgb(22, 22, 22)'
-  const navHover = '#B8941E'
-  const bgColor = 'rgba(240, 233, 224, 0.85)'
-  const borderColor = 'rgba(212, 175, 55, 0.15)'
-  const hamburgerColor = 'rgb(22, 22, 22)'
+  const navColor = 'rgba(255, 255, 255, 0.92)'
+  const navHover = '#E9C85B'
+  const hamburgerColor = '#ffffff'
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
-      style={{ backgroundColor: bgColor, borderBottom: '1px solid ' + borderColor }}
+      className="fixed top-0 left-0 right-0 z-50"
+      style={{ textShadow: '0 1px 10px rgba(0, 0, 0, 0.45), 0 0 2px rgba(0, 0, 0, 0.3)' }}
     >
-      <div className="mx-auto px-6 h-20 flex items-center justify-between">
+      <div className="relative mx-auto w-full max-w-[1600px] 3xl:max-w-[1900px] px-5 sm:px-6 h-20 md:h-24 flex items-center justify-between">
         <Link
           href="/"
-          className="flex items-baseline gap-1.5 md:gap-2 font-[var(--font-poppins)] text-[19px] md:text-[23px] tracking-[0.08em] max-lg:absolute max-lg:left-1/2 max-lg:-translate-x-1/2"
-          style={{ color: logoColor, marginRight: '50px', marginLeft: '25px' }}
+          aria-label="TJ Photography — Home"
+          className="inline-flex items-center shrink-0"
         >
-          <span className="font-bold">TJ</span>
-          <span className="font-medium">PHOTOGRAPHY</span>
+          <Image
+            src="/logo/tj-logo-white.png"
+            alt="TJ Photography"
+            width={3268}
+            height={240}
+            priority
+            className="h-[11px] sm:h-3 md:h-[17px] xl:h-5 w-auto lg:ml-8 xl:ml-12"
+            style={{ filter: 'drop-shadow(0 1px 6px rgba(0, 0, 0, 0.45))' }}
+          />
         </Link>
 
-        <div className="flex items-center gap-2">
-          <nav className="hidden lg:flex items-center gap-10 ml-[-458px]">
-            {links.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="relative font-[var(--font-poppins)] text-[11px] tracking-[0.18em] uppercase font-medium"
-                style={{ color: navColor }}
-                onMouseEnter={(e) => e.currentTarget.style.color = navHover}
-                onMouseLeave={(e) => e.currentTarget.style.color = navColor}
-              >
-                {link.label}
-                <span
-                  className="absolute -bottom-1.5 left-0 h-px bg-gold transition-all duration-300"
-                  style={{ width: '100%', transform: activeSection === link.href ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: 'left' }}
-                />
-              </a>
-            ))}
-          </nav>
+        <nav className="hidden lg:flex items-center gap-8 xl:gap-10 lg:mr-20">
+          {links.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="relative font-[var(--font-poppins)] text-[11px] xl:text-xs tracking-[0.18em] uppercase font-medium whitespace-nowrap transition-colors duration-300"
+              style={{ color: navColor }}
+              onMouseEnter={(e) => e.currentTarget.style.color = navHover}
+              onMouseLeave={(e) => e.currentTarget.style.color = navColor}
+            >
+              {link.label}
+              <span
+                className="absolute -bottom-1.5 left-0 h-px bg-gold transition-all duration-300"
+                style={{ width: '100%', transform: activeSection === link.href ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: 'left' }}
+              />
+            </a>
+          ))}
+        </nav>
 
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="lg:hidden flex flex-col gap-1.5 p-2 ml-4"
-            aria-label="Open navigation menu"
-          >
-            <span className="block w-6 h-px" style={{ backgroundColor: hamburgerColor }} />
-            <span className="block w-6 h-px" style={{ backgroundColor: hamburgerColor }} />
-            <span className="block w-4 h-px" style={{ backgroundColor: hamburgerColor }} />
-          </button>
-        </div>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="lg:hidden flex flex-col gap-1.5 p-2.5 -mr-2.5"
+          style={{ filter: 'drop-shadow(0 1px 4px rgba(0, 0, 0, 0.55))' }}
+          aria-label="Open navigation menu"
+        >
+          <span className="block w-6 h-px" style={{ backgroundColor: hamburgerColor }} />
+          <span className="block w-6 h-px" style={{ backgroundColor: hamburgerColor }} />
+          <span className="block w-4 h-px" style={{ backgroundColor: hamburgerColor }} />
+        </button>
       </div>
 
       <AnimatePresence>

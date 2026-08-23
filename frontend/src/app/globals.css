@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --breakpoint-3xl: 2048px;
+}
+
 @theme inline {
   --color-background: #eae1d2;
   --color-foreground: #161616;

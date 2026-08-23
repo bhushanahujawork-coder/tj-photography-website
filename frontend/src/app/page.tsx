@@ -16,9 +16,9 @@ export default function Home() {
       <Navbar />
       <main>
         <HeroSection />
+        <SoulCinema />
         <Statistics />
         <MasonryPortfolio />
-        <SoulCinema />
         <Reviews />
         <ContactSection />
       </main>

@@ -5,11 +5,11 @@ import { motion } from 'framer-motion'
 import { reviews } from '@/data/reviews'
 
 function useVisibleCount() {
-  const [count, setCount] = useState(3)
+  const [count, setCount] = useState(4)
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth
-      setCount(w < 640 ? 1 : w < 768 ? 2 : w < 1280 ? 2 : 3)
+      setCount(w < 640 ? 1 : w < 1024 ? 2 : w < 1280 ? 3 : 4)
     }
     update()
     window.addEventListener('resize', update)
@@ -50,8 +50,8 @@ export default function Reviews() {
     setIndex((i) => (i >= maxIndex ? 0 : i + 1))
 
   return (
-    <section className="relative w-full bg-[#eae1d2] py-14 md:py-24 overflow-hidden">
-      <div className="max-w-[90rem] mx-auto px-6">
+    <section className="relative w-full bg-[#eae1d2] py-14 md:py-24 2xl:py-28 overflow-hidden">
+      <div className="max-w-[90rem] mx-auto px-6 3xl:max-w-[112rem]">
         <div className="grid gap-10 lg:grid-cols-10 lg:gap-14 items-center">
           <div className="lg:col-span-3">
             <div className="relative">
@@ -71,13 +71,13 @@ export default function Reviews() {
                 <span className="text-[#B8941E] text-xs tracking-[0.3em] uppercase font-medium">
                   Client Love
                 </span>
-                <h2 className="mt-3 font-[var(--font-poppins)] font-semibold text-4xl md:text-5xl xl:text-6xl text-[#161616] leading-[1.05] tracking-wide">
+                <h2 className="mt-3 font-[var(--font-poppins)] font-semibold text-4xl md:text-5xl xl:text-6xl 2xl:text-[4.25rem] text-[#161616] leading-[1.05] tracking-wide">
                   HEAR FROM
                   <br />
                   CLIENTS
                 </h2>
                 <div className="mt-5 w-16 h-px bg-[#B8941E]" />
-                <p className="mt-5 text-[#3d3d3d] text-sm font-light leading-relaxed max-w-xs">
+                <p className="mt-5 text-[#3d3d3d] text-sm 2xl:text-base font-light leading-relaxed max-w-xs">
                   Real words from real weddings — couples who trusted TJ with
                   their once-in-a-lifetime moments.
                 </p>
@@ -151,9 +151,15 @@ export default function Reviews() {
                   {reviews.map((r) => (
                     <div
                       key={r.name}
-                      className="w-full shrink-0 px-2 sm:w-1/2 lg:w-1/2 xl:w-1/3"
+                      className="w-full shrink-0 px-2 sm:px-2.5 sm:w-1/2 lg:w-1/3 xl:w-1/4"
                     >
-                      <div className="bg-white rounded-2xl border border-black/5 shadow-md p-6 md:p-7 h-full flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                      <div className="relative bg-white rounded-2xl border border-black/5 shadow-md p-6 md:p-7 h-full flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-gold/30">
+                        <span
+                          aria-hidden
+                          className="absolute top-4 right-6 font-serif text-6xl leading-none text-gold/15 select-none"
+                        >
+                          &rdquo;
+                        </span>
                         <div className="flex gap-1">
                           {[1, 2, 3, 4, 5].map((s) => (
                             <svg
@@ -170,14 +176,14 @@ export default function Reviews() {
                           &ldquo;{r.quote}&rdquo;
                         </p>
                         <div className="mt-5 pt-4 border-t border-black/5 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#161616] text-gold flex items-center justify-center text-xs font-semibold tracking-wide">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#161616] to-black text-gold ring-2 ring-gold/25 flex items-center justify-center text-xs font-semibold tracking-wide shrink-0">
                             {initials(r.name)}
                           </div>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[#161616] text-sm font-semibold">
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-[#161616] text-sm font-semibold truncate">
                               {r.name}
                             </span>
-                            <span className="text-[#8a857e] text-[11px] tracking-[0.15em] uppercase">
+                            <span className="text-[#8a857e] text-[11px] tracking-[0.15em] uppercase truncate">
                               {r.city}, {r.state}
                             </span>
                           </div>
@@ -205,11 +211,11 @@ export default function Reviews() {
                 </div>
               )}
 
-              <div className="mt-5 flex items-center justify-center gap-3 sm:hidden">
+              <div className="mt-6 flex items-center justify-center gap-4 sm:hidden">
                 <button
                   onClick={goPrev}
                   aria-label="Previous reviews"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-white/90 border border-[#B8941E]/40 text-[#161616] shadow-md hover:bg-[#B8941E] hover:text-white transition-all duration-300"
+                  className="flex items-center justify-center w-11 h-11 rounded-full bg-white/90 border border-[#B8941E]/40 text-[#161616] shadow-md active:bg-[#B8941E] active:text-white transition-all duration-300"
                 >
                   <svg
                     className="w-4 h-4"
@@ -226,7 +232,7 @@ export default function Reviews() {
                 <button
                   onClick={goNext}
                   aria-label="Next reviews"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-white/90 border border-[#B8941E]/40 text-[#161616] shadow-md hover:bg-[#B8941E] hover:text-white transition-all duration-300"
+                  className="flex items-center justify-center w-11 h-11 rounded-full bg-white/90 border border-[#B8941E]/40 text-[#161616] shadow-md active:bg-[#B8941E] active:text-white transition-all duration-300"
                 >
                   <svg
                     className="w-4 h-4"
