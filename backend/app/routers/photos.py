@@ -38,6 +38,7 @@ async def list_photos(
     favorite: bool | None = Query(default=None, description="Filter by favorite status"),
     is_highlight: bool | None = Query(default=None, description="Filter by highlight status"),
     is_hidden: bool | None = Query(default=None, description="Filter by hidden status"),
+    include_deleted: bool | None = Query(default=None, description="Include soft-deleted photos (requires delete permission)"),
     date_from: str | None = Query(default=None, description="Filter photos taken after this date"),
     date_to: str | None = Query(default=None, description="Filter photos taken before this date"),
     sort_by: str = Query(default="created_at", description="Field to sort by"),
@@ -55,6 +56,7 @@ async def list_photos(
         favorite=favorite,
         is_highlight=is_highlight,
         is_hidden=is_hidden,
+        include_deleted=include_deleted,
         date_from=date_from,
         date_to=date_to,
         sort_by=sort_by,
@@ -63,6 +65,64 @@ async def list_photos(
         page_size=page_size,
     )
     return await photo_service.list_photos(filters, current_user)
+
+
+@router.get(
+    "/share/{code}/photos",
+    response_model=PaginatedResponse[PhotoResponse],
+    operation_id="photos_share_list",
+    summary="List photos for a share link (public, share-scoped)",
+)
+async def list_share_photos(
+    code: str,
+    album_id: str | None = Query(default=None, description="Filter by album ID"),
+    folder_id: str | None = Query(default=None, description="Filter by folder ID"),
+    search: str | None = Query(default=None, description="Search in filename and alt text"),
+    favorite: bool | None = Query(default=None, description="Filter by favorite status"),
+    is_highlight: bool | None = Query(default=None, description="Filter by highlight status"),
+    date_from: str | None = Query(default=None, description="Filter photos taken after this date"),
+    date_to: str | None = Query(default=None, description="Filter photos taken before this date"),
+    sort_by: str = Query(default="created_at", description="Field to sort by"),
+    sort_order: str = Query(default="desc", description="Sort direction (asc/desc)"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=50, ge=1, le=200, description="Items per page"),
+    photo_service: PhotoService = Depends(get_photo_service),
+) -> PaginatedResponse[PhotoResponse]:
+    filters = PhotoFilterParams(
+        wedding_id=None,
+        album_id=album_id,
+        folder_id=folder_id,
+        search=search,
+        favorite=favorite,
+        is_highlight=is_highlight,
+        is_hidden=None,
+        date_from=date_from,
+        date_to=date_to,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size,
+    )
+    return await photo_service.list_share_photos(code, filters)
+
+
+@router.get(
+    "/photos/download",
+    operation_id="photos_download_batch",
+    summary="Download multiple photos as a ZIP of PNGs",
+)
+async def download_photos_batch(
+    photo_ids: str = Query(..., description="Comma-separated photo IDs"),
+    current_user: dict = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service),
+) -> Response:
+    ids = [pid.strip() for pid in photo_ids.split(",") if pid.strip()]
+    zip_bytes, zip_name = await photo_service.download_photos_batch(ids, current_user)
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_name}"'},
+    )
 
 
 @router.get(
@@ -207,23 +267,4 @@ async def download_photo(
         content=png_bytes,
         media_type=content_type,
         headers={"Content-Disposition": f'attachment; filename="{png_filename}"'},
-    )
-
-
-@router.get(
-    "/photos/download",
-    operation_id="photos_download_batch",
-    summary="Download multiple photos as a ZIP of PNGs",
-)
-async def download_photos_batch(
-    photo_ids: str = Query(..., description="Comma-separated photo IDs"),
-    current_user: dict = Depends(get_current_active_user),
-    photo_service: PhotoService = Depends(get_photo_service),
-) -> Response:
-    ids = [pid.strip() for pid in photo_ids.split(",") if pid.strip()]
-    zip_bytes, zip_name = await photo_service.download_photos_batch(ids, current_user)
-    return Response(
-        content=zip_bytes,
-        media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{zip_name}"'},
     )

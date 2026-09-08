@@ -45,9 +45,9 @@ class AlbumService:
         logger.info("Album created: %s in wedding %s", album.id, wedding_id)
         return AlbumResponse.model_validate(album)
 
-    async def get_album(self, album_id: str, current_user: dict) -> AlbumResponse:
+    async def get_album(self, album_id: str, wedding_id: str, current_user: dict) -> AlbumResponse:
         album = await self.album_repo.get(album_id)
-        if not album:
+        if not album or album.wedding_id != wedding_id:
             raise NotFoundError(message="Album not found")
         return AlbumResponse.model_validate(album)
 
@@ -56,9 +56,9 @@ class AlbumService:
         items.sort(key=lambda a: a.sort_order)
         return [AlbumResponse.model_validate(a) for a in items]
 
-    async def update_album(self, album_id: str, data, current_user: dict) -> AlbumResponse:
+    async def update_album(self, album_id: str, wedding_id: str, data, current_user: dict) -> AlbumResponse:
         album = await self.album_repo.get(album_id)
-        if not album:
+        if not album or album.wedding_id != wedding_id:
             raise NotFoundError(message="Album not found")
 
         updated = await self.album_repo.update(
@@ -67,12 +67,15 @@ class AlbumService:
             description=data.description,
             cover_image_url=data.cover_image,
         )
+        if data.clear_cover and updated is not None:
+            updated.cover_image_url = None
+            await self.album_repo.session.flush()
         logger.info("Album updated: %s", album_id)
         return AlbumResponse.model_validate(updated)
 
-    async def delete_album(self, album_id: str, current_user: dict) -> None:
+    async def delete_album(self, album_id: str, wedding_id: str, current_user: dict) -> None:
         album = await self.album_repo.get(album_id)
-        if not album:
+        if not album or album.wedding_id != wedding_id:
             raise NotFoundError(message="Album not found")
 
         wedding = await self.wedding_repo.get(album.wedding_id)

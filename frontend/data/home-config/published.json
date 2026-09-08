@@ -1,0 +1,477 @@
+{
+  "version": 2,
+  "global": {
+    "background": "#eae1d2",
+    "noise": 5
+  },
+  "sectionOrder": [
+    "header",
+    "hero",
+    "soulCinema",
+    "portfolio",
+    "reviews",
+    "contact",
+    "footer"
+  ],
+  "header": {
+    "logo": {
+      "src": "/logo/tj-logo-white.png",
+      "alt": "TJ Photography",
+      "x": 76,
+      "y": 6,
+      "size": 272
+    },
+    "nav": {
+      "offset": 253,
+      "spacing": 32,
+      "links": [
+        {
+          "label": "Weddings",
+          "href": "#weddings"
+        },
+        {
+          "label": "Films",
+          "href": "/films"
+        },
+        {
+          "label": "About Us",
+          "href": "/about"
+        },
+        {
+          "label": "Contact Us",
+          "href": "#contact"
+        }
+      ]
+    },
+    "overrides": {
+      "tablet": {
+        "logo": {
+          "x": 20,
+          "y": 0,
+          "size": 231
+        },
+        "nav": {
+          "offset": -14
+        }
+      },
+      "mobile": {
+        "logo": {
+          "x": 163,
+          "size": 163
+        },
+        "nav": {
+          "offset": -14
+        }
+      }
+    }
+  },
+  "hero": {
+    "slides": [
+      {
+        "src": "/hero/hero-1.webp",
+        "alt": "Luxury wedding photography"
+      },
+      {
+        "src": "/hero/hero-3.webp",
+        "alt": "Fine art wedding portrait"
+      }
+    ],
+    "interval": 5000
+  },
+  "soulCinema": {
+    "eyebrow": "Soul Cinema",
+    "title": "Feel the Wedding. Not Just See It.",
+    "description": "A cinematic glimpse into the moments we live behind the lens — every frame, a story worth keeping.",
+    "videoSrc": "/cinema/cinema.mp4",
+    "poster": "/cinema/poster.jpg",
+    "frame": "global",
+    "type": {}
+  },
+  "portfolio": {
+    "headingTitle": "Our Portfolio",
+    "headingDescription": "A curated selection of our favorite moments.",
+    "images": [
+      {
+        "id": "p1",
+        "src": "/portfolio/portfolio-01.webp",
+        "alt": "Bride and groom at golden hour",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p2",
+        "src": "/portfolio/portfolio-02.webp",
+        "alt": "Wedding ceremony by the ocean",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p3",
+        "src": "/portfolio/portfolio-03.webp",
+        "alt": "Bride portrait with soft window light",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p4",
+        "src": "/portfolio/portfolio-04.webp",
+        "alt": "Couple walking through a blooming garden",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p5",
+        "src": "/portfolio/portfolio-05.webp",
+        "alt": "Wedding reception at dusk",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p6",
+        "src": "/portfolio/portfolio-06.webp",
+        "alt": "Bridal party in golden field",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p7",
+        "src": "/portfolio/portfolio-07.webp",
+        "alt": "First dance under string lights",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p8",
+        "src": "",
+        "alt": "Aerial drone shot of beach wedding",
+        "width": 800,
+        "height": 800,
+        "overlay": "Love, captured in \"CINEMATIC\" frames"
+      },
+      {
+        "id": "p9",
+        "src": "/portfolio/portfolio-09.webp",
+        "alt": "Mandap decoration details",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p10",
+        "src": "/portfolio/portfolio-10.webp",
+        "alt": "Bride getting ready",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p11",
+        "src": "/portfolio/portfolio-11.webp",
+        "alt": "Groom portrait in traditional wear",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p12",
+        "src": "/portfolio/portfolio-12.webp",
+        "alt": "Couple with family at ceremony",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p13",
+        "src": "/portfolio/portfolio-13.webp",
+        "alt": "Ring exchange close-up",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p14",
+        "src": "/portfolio/portfolio-14.webp",
+        "alt": "Fireworks at wedding night",
+        "width": 800,
+        "height": 800
+      },
+      {
+        "id": "p15",
+        "src": "/portfolio/portfolio-15.webp",
+        "alt": "Couple walking away at sunset",
+        "width": 800,
+        "height": 800
+      }
+    ]
+  },
+  "reviews": {
+    "eyebrow": "Client Love",
+    "titleLine1": "HEAR FROM",
+    "titleLine2": "CLIENTS",
+    "description": "Real words from real weddings — couples who trusted TJ with their once-in-a-lifetime moments.",
+    "rating": "5.0 · Google Reviews",
+    "reviews": [
+      {
+        "name": "Riya & Kunal Shah",
+        "city": "Jamnagar",
+        "state": "Gujarat",
+        "quote": "TJ Photography captured every emotion of our wedding so beautifully. The cinematic film still gives us goosebumps every time we watch it."
+      },
+      {
+        "name": "Meera & Arjun Patel",
+        "city": "Rajkot",
+        "state": "Gujarat",
+        "quote": "From the first meeting to the final delivery, everything was smooth. The photos feel like art — we have framed them all over our home."
+      },
+      {
+        "name": "Priya & Rohan Mehta",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "quote": "The highlight film was beyond our expectations. Every guest asked us who shot our wedding. Truly the best decision we made."
+      },
+      {
+        "name": "Nisha & Vihaan Desai",
+        "city": "Vadodara",
+        "state": "Gujarat",
+        "quote": "They blended into the wedding like family yet captured everything perfectly. The candid moments they caught are priceless."
+      },
+      {
+        "name": "Anjali & Dev Patel",
+        "city": "Surat",
+        "state": "Gujarat",
+        "quote": "Stunning photography, elegant editing and on-time delivery. Our wedding album tells our story exactly the way we lived it."
+      },
+      {
+        "name": "Sana & Zaid Shaikh",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "quote": "Professional, creative and so patient with our family photos. The pictures are so natural — we relive our wedding every day."
+      },
+      {
+        "name": "Kinjal & Harsh Joshi",
+        "city": "Jamnagar",
+        "state": "Gujarat",
+        "quote": "The cinematic film felt like a movie trailer of our love story. Worth every rupee and more. Highly recommended!"
+      },
+      {
+        "name": "Divya & Nikhil Trivedi",
+        "city": "Rajkot",
+        "state": "Gujarat",
+        "quote": "Beautiful lighting, perfect angles and lovely colours. TJ Photography understood our vision from day one and delivered magic."
+      },
+      {
+        "name": "Pooja & Aryan Bhatt",
+        "city": "Vadodara",
+        "state": "Gujarat",
+        "quote": "Our families still talk about the wedding film. The team was professional, punctual and made everyone feel comfortable in front of the camera."
+      },
+      {
+        "name": "Shivani & Jay Prajapati",
+        "city": "Surat",
+        "state": "Gujarat",
+        "quote": "From engagement to the final ceremony, every single moment was captured with so much heart. Thank you for preserving our memories forever."
+      },
+      {
+        "name": "Kavya & Rohit Malhotra",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "quote": "We flew down for our destination wedding and TJ Photography handled everything flawlessly. The film is pure cinema — our guests could not stop talking about it."
+      },
+      {
+        "name": "Ishita & Kabir Mehta",
+        "city": "Anand",
+        "state": "Gujarat",
+        "quote": "Warm, humble and incredibly talented. They made our small-town wedding look like a grand production. Every photo is a treasure."
+      },
+      {
+        "name": "Tanvi & Sarthak Shah",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "quote": "The candid shots were so natural that we felt like we were living the moments again. Professional team with a pure artisanal touch."
+      },
+      {
+        "name": "Dhara & Yash Patel",
+        "city": "Anand",
+        "state": "Gujarat",
+        "quote": "They captured our pheras, our laughter and even our tears of joy. The album is beyond beautiful — thank you for everything."
+      },
+      {
+        "name": "Ritu & Manan Joshi",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "quote": "Elegant, on time and full of creative ideas. The highlight video made our families emotional. Worth every penny."
+      },
+      {
+        "name": "Jinal & Dhruv Desai",
+        "city": "Anand",
+        "state": "Gujarat",
+        "quote": "Our wedding was a three-day celebration and they covered every single ritual with so much care. The quality is simply outstanding."
+      },
+      {
+        "name": "Falguni & Kirtan Panchal",
+        "city": "Surat",
+        "state": "Gujarat",
+        "quote": "The photos have such a premium feel. They understood our vibe instantly and delivered exactly what we dreamed of."
+      },
+      {
+        "name": "Hetal & Mihir Thakkar",
+        "city": "Rajkot",
+        "state": "Gujarat",
+        "quote": "Very friendly team that made everyone comfortable. The final film brought tears to my parents eyes. Highly recommended for any wedding."
+      },
+      {
+        "name": "Kruti & Ved Vyas",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "quote": "From the engagement shoot to the reception, every frame was perfect. The editing style is classy and timeless."
+      },
+      {
+        "name": "Aarti & Nirav Raval",
+        "city": "Jamnagar",
+        "state": "Gujarat",
+        "quote": "A local photographer who shoots at international standards. The story they told through the film is something we will cherish forever."
+      }
+    ]
+  },
+  "contact": {
+    "eyebrow": "Visit Our Office",
+    "title": "Find TJ Photography in Jamnagar",
+    "addressLines": [
+      "UNICORN PRIME, 414,",
+      "Near Honda Showroom,",
+      "Jamnagar – Lalpur Road,",
+      "Jamnagar, Gujarat 361006"
+    ],
+    "phone": {
+      "label": "090333 20304",
+      "href": "tel:09033320304"
+    },
+    "instagram": {
+      "label": "@tj_photography_____",
+      "href": "https://www.instagram.com/tj_photography_____/"
+    },
+    "mapSrc": "https://www.google.com/maps?q=22.4236237,70.067044&output=embed",
+    "mapLink": "https://www.google.com/maps/dir/?api=1&destination=22.4236237,70.067044",
+    "directionsLabel": "Get Direction"
+  },
+  "footer": {
+    "brandLeft": "TJ",
+    "brandRight": "Photography",
+    "social": [
+      {
+        "type": "instagram",
+        "label": "Instagram",
+        "href": "https://www.instagram.com/tj_photography_____/"
+      },
+      {
+        "type": "whatsapp",
+        "label": "WhatsApp",
+        "href": "https://wa.me/919033320304"
+      }
+    ],
+    "copyrightYear": "2026",
+    "rightsLine": "All rights reserved",
+    "designerLine": "Designed by Bhushan Ahuja"
+  },
+  "films": {
+    "cards": [
+      {
+        "id": "f1",
+        "couple": "Rajan & Hasti",
+        "description": "A cinematic love story — every moment, beautifully preserved.",
+        "embedId": "rZHiDPlVxpo"
+      },
+      {
+        "id": "f2",
+        "couple": "Subham & Nandita",
+        "description": "Grand rituals and heartfelt pheras, captured forever.",
+        "embedId": "1c9CjbwhCJI"
+      },
+      {
+        "id": "f3",
+        "couple": "Prince & Jensi",
+        "description": "An intimate celebration filled with joy and golden light.",
+        "embedId": "DOrJfZ7b-LY"
+      },
+      {
+        "id": "f4",
+        "couple": "Prince & Jensi",
+        "description": "Frames of laughter and love under the open sky.",
+        "embedId": "uSGj6RcgIKI"
+      },
+      {
+        "id": "f5",
+        "couple": "Manali & Sandip",
+        "description": "Two hearts, one story — cinematic from start to finish.",
+        "embedId": "JSZncT_84fU"
+      },
+      {
+        "id": "f6",
+        "couple": "Shubham & Nandita",
+        "description": "A dreamy wedding day wrapped in emotion and grace.",
+        "embedId": "rtLM7WP19-8"
+      },
+      {
+        "id": "f7",
+        "couple": "Dhruv & Krishna",
+        "description": "An unforgettable celebration of love and togetherness.",
+        "embedId": "WMltm_R0nWg"
+      },
+      {
+        "id": "f8",
+        "couple": "Vrushika & Malay",
+        "description": "Family, festivity and pheras — every second precious.",
+        "embedId": "9d91pm7O1bU"
+      },
+      {
+        "id": "f9",
+        "couple": "Harsh & Anjali",
+        "description": "Tender moments and fireworks, filmed with soul.",
+        "embedId": "EMgjw_BxpDw"
+      },
+      {
+        "id": "f10",
+        "couple": "Harsh & Anjali",
+        "description": "A celebration full of colour, confetti and pure love.",
+        "embedId": "Qltu1K3Tgx8"
+      },
+      {
+        "id": "f11",
+        "couple": "Vrushika & Malay",
+        "description": "Dramatic light, deep emotions, one beautiful journey.",
+        "embedId": "QCdT_BHo1Hs"
+      },
+      {
+        "id": "f12",
+        "couple": "Viraj & Grishma",
+        "description": "Sparklers, smiles and a night to remember forever.",
+        "embedId": "LQDTZZ9YFeU"
+      },
+      {
+        "id": "f13",
+        "couple": "Viraj & Grishma",
+        "description": "Fun, laughter and a love that shines in every frame.",
+        "embedId": "QTcrPm4hTNA"
+      },
+      {
+        "id": "f14",
+        "couple": "Viraj & Grishma",
+        "description": "A candid celebration wrapped in petals and pure joy.",
+        "embedId": "MJa2JB1Kh-Y"
+      },
+      {
+        "id": "f15",
+        "couple": "Dhruv & Krishna",
+        "description": "Joyful moments and endless love, film by TJ.",
+        "embedId": "monnnjYFFug"
+      },
+      {
+        "id": "f16",
+        "couple": "Hari & Bhoomi",
+        "description": "An elegant, editorial love story in every frame.",
+        "embedId": "1iJsyEggn-U"
+      }
+    ],
+    "style": {
+      "nameSize": 21,
+      "descriptionSize": 13,
+      "aspect": "4/3",
+      "gap": 32
+    }
+  }
+}

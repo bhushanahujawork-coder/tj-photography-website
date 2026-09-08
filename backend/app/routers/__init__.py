@@ -5,6 +5,7 @@ from app.routers.folders import router as folders_router
 from app.routers.photos import router as photos_router
 from app.routers.participants import router as participants_router
 from app.routers.uploads import router as uploads_router
+from app.routers.media import router as media_router
 from app.routers.downloads import router as downloads_router
 from app.routers.activity import router as activity_router
 from app.routers.notifications import router as notifications_router
@@ -21,6 +22,7 @@ __all__ = [
     "photos_router",
     "participants_router",
     "uploads_router",
+    "media_router",
     "downloads_router",
     "activity_router",
     "notifications_router",

@@ -16,7 +16,7 @@ import { AuthGuard } from '@/components/platform/auth-guard'
 import { Breadcrumb } from '@/components/platform/breadcrumb'
 import { apiFetch } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import type { Album, Wedding } from '@/types/platform'
+import type { Album, Photo, Wedding } from '@/types/platform'
 
 export default function AlbumsPage() {
   const { toast } = useToast()
@@ -29,6 +29,9 @@ export default function AlbumsPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null)
   const [viewingAlbum, setViewingAlbum] = useState<Album | null>(null)
+  const [viewingPhotos, setViewingPhotos] = useState<Photo[]>([])
+  const [viewLoading, setViewLoading] = useState(false)
+  const [coverUpdating, setCoverUpdating] = useState(false)
   const [formName, setFormName] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formWeddingId, setFormWeddingId] = useState('')
@@ -91,6 +94,85 @@ export default function AlbumsPage() {
   function openView(album: Album) {
     setViewingAlbum(album)
     setViewModalOpen(true)
+    setViewLoading(true)
+    getAlbumPhotos(album.weddingId, album.id)
+      .then(setViewingPhotos)
+      .catch(() => {
+        setViewingPhotos([])
+        toast({ title: 'Failed to load photos', variant: 'error' })
+      })
+      .finally(() => setViewLoading(false))
+  }
+
+  async function getAlbumPhotos(weddingId: string, albumId: string): Promise<Photo[]> {
+    const res = await apiFetch<{
+      items?: Array<{
+        id: string
+        filename?: string
+        altText?: string
+        thumbnailUrl?: string | null
+        mediumUrl?: string | null
+        originalUrl?: string | null
+        blurHash?: string | null
+        width?: number | null
+        height?: number | null
+        createdAt?: string
+      }>
+    }>(`/api/v1/weddings/${weddingId}/photos?album_id=${albumId}&page_size=200`)
+    return (res?.items || []).map(p => ({
+      id: p.id,
+      weddingId,
+      src: p.mediumUrl || p.thumbnailUrl || p.originalUrl || '',
+      alt: p.altText || p.filename || 'Photo',
+      width: p.width || 800,
+      height: p.height || 600,
+      blurDataURL: p.blurHash || undefined,
+      favorite: false,
+      isHighlight: false,
+      createdAt: p.createdAt || '',
+    }))
+  }
+
+  async function setCover(photo: Photo) {
+    if (!viewingAlbum) return
+    setCoverUpdating(true)
+    try {
+      await apiFetch(`/api/v1/weddings/${viewingAlbum.weddingId}/albums/${viewingAlbum.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ cover_image: photo.src }),
+      })
+      setAlbums((prev) =>
+        prev.map((a) =>
+          a.id === viewingAlbum.id ? { ...a, coverImageUrl: photo.src } : a
+        )
+      )
+      setViewingAlbum((prev) => (prev ? { ...prev, coverImageUrl: photo.src } : prev))
+      toast({ title: 'Cover updated', variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to update cover', variant: 'error' })
+    } finally {
+      setCoverUpdating(false)
+    }
+  }
+
+  async function clearCover() {
+    if (!viewingAlbum) return
+    setCoverUpdating(true)
+    try {
+      await apiFetch(`/api/v1/weddings/${viewingAlbum.weddingId}/albums/${viewingAlbum.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ clear_cover: true }),
+      })
+      setAlbums((prev) =>
+        prev.map((a) => (a.id === viewingAlbum.id ? { ...a, coverImageUrl: undefined } : a))
+      )
+      setViewingAlbum((prev) => (prev ? { ...prev, coverImageUrl: undefined } : prev))
+      toast({ title: 'Cover removed', variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to remove cover', variant: 'error' })
+    } finally {
+      setCoverUpdating(false)
+    }
   }
 
   function handleDelete() {
@@ -307,13 +389,71 @@ export default function AlbumsPage() {
       >
         {viewingAlbum && (
           <div>
-            <div className="mb-4 text-sm text-muted">
-              {getWeddingName(viewingAlbum.weddingId)} &middot; {viewingAlbum.photoCount} photos
+            <div className="mb-4 flex flex-col gap-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                {getWeddingName(viewingAlbum.weddingId)} &middot; {viewingAlbum.photoCount} photos
+              </span>
+              {viewingAlbum.coverImageUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={coverUpdating}
+                  onClick={clearCover}
+                >
+                  <Icon name="trash" size={14} />
+                  Remove cover
+                </Button>
+              )}
             </div>
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Icon name="image" size={28} className="text-muted" />
-              <p className="mt-3 text-sm text-muted">No photos in this album yet</p>
-            </div>
+
+            {viewLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+              </div>
+            ) : viewingPhotos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Icon name="image" size={28} className="text-muted" />
+                <p className="mt-3 text-sm text-muted">No photos in this album yet</p>
+                <p className="mt-1 text-xs text-muted">
+                  Assign photos from the gallery, then pick one as the cover.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                {viewingPhotos.map((p) => {
+                  const isCover = viewingAlbum.coverImageUrl === p.src
+                  return (
+                    <div
+                      key={p.id}
+                      className={`group relative overflow-hidden rounded-lg border bg-white/5 ${
+                        isCover ? 'border-gold' : 'border-border/50'
+                      }`}
+                    >
+                      <img
+                        src={p.src}
+                        alt={p.alt}
+                        loading="lazy"
+                        className="aspect-[4/3] w-full object-cover"
+                      />
+                      <button
+                        disabled={coverUpdating}
+                        onClick={() => setCover(p)}
+                        className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[11px] text-white opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-0"
+                      >
+                        <Icon name="image" size={12} />
+                        Set as cover
+                      </button>
+                      {isCover && (
+                        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-gold px-2 py-1 text-[11px] font-medium text-black">
+                          <Icon name="check" size={12} />
+                          Cover
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </Modal>

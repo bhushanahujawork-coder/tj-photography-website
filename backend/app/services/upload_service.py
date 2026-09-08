@@ -1,13 +1,13 @@
 import io
 import logging
-import os
 import uuid
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.errors import NotFoundError, ValidationError
+from app.core.errors import NotFoundError, RateLimitError, ValidationError
+from app.core.media import media_url
 from app.core.storage import get_storage
 from app.repositories.album_repository import AlbumRepository
 from app.repositories.folder_repository import FolderRepository
@@ -32,19 +32,35 @@ class UploadService:
         self.image_service = ImageProcessingService()
         self.storage = get_storage()
 
-    def _make_url(self, relative_path: str) -> str:
-        return f"/storage/{relative_path.replace(os.sep, '/')}"
-
     async def init_upload(self, data, current_user: dict) -> UploadInitResponse:
         wedding = await self.wedding_repo.get(data.wedding_id)
         if not wedding:
             raise NotFoundError(message="Wedding not found")
 
+        if len(data.files) > settings.UPLOAD_MAX_FILES_PER_SESSION:
+            raise ValidationError(
+                message=f"Upload session exceeds maximum of {settings.UPLOAD_MAX_FILES_PER_SESSION} files"
+            )
+
+        user_id = current_user.get("sub")
+        active = sum(
+            1 for s in self._sessions.values()
+            if s.get("user_id") == user_id
+            and len(s.get("completed", set())) + len(s.get("failed", set())) < len(s.get("files", []))
+        )
+        if active >= settings.UPLOAD_MAX_SESSIONS_PER_USER:
+            raise RateLimitError(
+                message=(
+                    f"Maximum of {settings.UPLOAD_MAX_SESSIONS_PER_USER} active upload "
+                    "sessions exceeded. Cancel or complete a session first."
+                )
+            )
+
         upload_id = str(uuid.uuid4())
         file_allocations: list[FileAllocation] = []
         for i, file_info in enumerate(data.files):
             file_id = str(uuid.uuid4())
-            ext = Path(file_info.name).suffix
+            ext = Path(file_info.name).suffix.lower()
             upload_path = self._file_storage_path(data.wedding_id, file_id, ext)
             file_allocations.append(FileAllocation(
                 file_id=file_id,
@@ -55,6 +71,7 @@ class UploadService:
             ))
 
         self._sessions[upload_id] = {
+            "user_id": user_id,
             "wedding_id": data.wedding_id,
             "album_id": data.album_id,
             "folder_id": data.folder_id,
@@ -95,19 +112,24 @@ class UploadService:
         wedding_id = session["wedding_id"]
         filename = file_info.filename
         content_type = file_info.content_type or "image/jpeg"
-        storage_path = self._file_storage_path(wedding_id, file_id, Path(filename).suffix)
+        storage_path = self._file_storage_path(wedding_id, file_id, Path(filename).suffix.lower())
 
         ext = Path(filename).suffix.lower()
         if ext not in settings.ALLOWED_EXTENSIONS:
             session["failed"].add(file_id)
             raise ValidationError(message=f"File type not allowed: {ext}")
 
+        try:
+            await self.image_service.validate_bytes(file_data, filename)
+        except ValidationError:
+            session["failed"].add(file_id)
+            raise
+
+        content_type = self.image_service.mime_for_ext(ext)
         await self.storage.save(storage_path, file_data, content_type)
 
         try:
             exif_data = await self.image_service.extract_exif(file_data)
-            width, height = await self.image_service.get_dimensions(file_data)
-            blur_hash = await self.image_service.generate_blur_hash(file_data)
 
             wedding = await self.wedding_repo.get(wedding_id)
             watermark_settings = None
@@ -135,15 +157,15 @@ class UploadService:
                 wedding_id=wedding_id,
                 album_id=session.get("album_id"),
                 folder_id=session.get("folder_id"),
-                filename=Path(filename).stem + ".webp",
+                filename=filename,
                 original_path=processed.get("original", storage_path),
                 medium_path=processed.get("medium"),
                 thumbnail_path=processed.get("thumbnail"),
-                blur_hash=blur_hash,
-                width=width,
-                height=height,
-                file_size=processed.get("file_size", file_info.size or len(file_data)),
-                content_type="image/webp",
+                blur_hash=processed.get("blur_hash"),
+                width=processed.get("width"),
+                height=processed.get("height"),
+                file_size=processed.get("file_size", len(file_data)),
+                content_type=content_type,
                 exif_data=exif_data or None,
                 uploaded_by=uploader_id,
             )
@@ -187,9 +209,9 @@ class UploadService:
                 album_id=photo.album_id,
                 folder_id=photo.folder_id,
                 filename=photo.filename,
-                original_url=self._make_url(photo.original_path),
-                medium_url=self._make_url(photo.medium_path) if photo.medium_path else None,
-                thumbnail_url=self._make_url(photo.thumbnail_path) if photo.thumbnail_path else None,
+                original_url=media_url(photo.id, "original"),
+                medium_url=media_url(photo.id, "medium") if photo.medium_path else None,
+                thumbnail_url=media_url(photo.id, "thumbnail") if photo.thumbnail_path else None,
                 blur_hash=photo.blur_hash,
                 alt_text=photo.alt_text,
                 width=photo.width,
@@ -212,6 +234,15 @@ class UploadService:
             return resp
         except Exception as e:
             session["failed"].add(file_id)
+            for orphan in (
+                storage_path,
+                f"weddings/{wedding_id}/optimized/{file_id}.webp",
+                f"weddings/{wedding_id}/thumbnails/{file_id}.webp",
+            ):
+                try:
+                    await self.storage.delete(orphan)
+                except Exception:
+                    logger.warning("Failed to clean up orphan media: %s", orphan)
             logger.error("Upload processing failed: %s", e)
             raise
 

@@ -14,6 +14,7 @@ import {
 import Navbar from '@/components/home/navbar'
 import Footer from '@/components/home/footer'
 import WhatsappFloat from '@/components/home/whatsapp-float'
+import { HomeConfigProvider } from '@/lib/home-config/client'
 import { about, type AboutMember } from '@/data/about'
 
 const easeLux = [0.22, 1, 0.36, 1] as const
@@ -194,12 +195,15 @@ function QuoteBand() {
   const [i, setI] = useState(0)
 
   useEffect(() => {
+    if (quotes.length === 0) return
     const t = setInterval(() => setI((v) => (v + 1) % quotes.length), 5000)
     return () => clearInterval(t)
   }, [quotes.length])
 
+  if (quotes.length === 0) return null
+
   return (
-    <section className="relative w-full bg-[#0a0a0a] py-8 md:py-10 overflow-hidden">
+    <section data-hero className="relative w-full bg-[#0a0a0a] py-8 md:py-10 overflow-hidden">
       <GoldDust />
       <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
         <span className="text-gold/30 font-serif text-5xl md:text-6xl leading-none select-none" aria-hidden>
@@ -342,7 +346,7 @@ export default function AboutPage() {
   const imgY = useTransform(scrollYProgress, [0, 1], [45, -45])
 
   return (
-    <>
+    <HomeConfigProvider>
       <Navbar />
 
       {/* 01 — Our Story */}
@@ -397,25 +401,27 @@ export default function AboutPage() {
                   {p}
                 </motion.p>
               ))}
-              <div className="mt-8 border-t border-gold/25 pt-6 flex">
-                {about.story.stats.map((s, i) => (
-                  <motion.div
-                    key={s.label}
-                    className={`flex-1 ${i > 0 ? 'border-l border-gold/25 pl-4 md:pl-6' : ''} ${i < about.story.stats.length - 1 ? 'pr-4 md:pr-6' : ''}`}
-                    initial={{ opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 + i * 0.1 }}
-                  >
-                    <p className="font-[var(--font-poppins)] font-semibold text-2xl md:text-3xl text-gold-dark leading-none">
-                      {s.value}
-                    </p>
-                    <p className="mt-2 text-[10px] md:text-[11px] tracking-[0.2em] uppercase text-muted/80 leading-snug">
-                      {s.label}
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
+              {about.story.stats.length > 0 && (
+                <div className="mt-8 border-t border-gold/25 pt-6 flex">
+                  {about.story.stats.map((s, i) => (
+                    <motion.div
+                      key={s.label}
+                      className={`flex-1 ${i > 0 ? 'border-l border-gold/25 pl-4 md:pl-6' : ''} ${i < about.story.stats.length - 1 ? 'pr-4 md:pr-6' : ''}`}
+                      initial={{ opacity: 0, y: 16 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 + i * 0.1 }}
+                    >
+                      <p className="font-[var(--font-poppins)] font-semibold text-2xl md:text-3xl text-gold-dark leading-none">
+                        {s.value}
+                      </p>
+                      <p className="mt-2 text-[10px] md:text-[11px] tracking-[0.2em] uppercase text-muted/80 leading-snug">
+                        {s.label}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
 
             <motion.div
@@ -496,20 +502,22 @@ export default function AboutPage() {
       <QuoteBand />
 
       {/* 03 — The Team */}
-      <section className="relative w-full bg-[#eae1d2] py-8 md:py-12 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-6">
-          <SectionHeading
-            eyebrow={about.team.eyebrow}
-            heading={about.team.heading}
-            subtitle={about.team.subtitle}
-          />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {about.team.members.map((m, i) => (
-              <TeamCard key={m.role + i} member={m} index={i} />
-            ))}
+      {about.team.members.length > 0 && (
+        <section className="relative w-full bg-[#eae1d2] py-8 md:py-12 overflow-hidden">
+          <div className="max-w-6xl mx-auto px-6">
+            <SectionHeading
+              eyebrow={about.team.eyebrow}
+              heading={about.team.heading}
+              subtitle={about.team.subtitle}
+            />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {about.team.members.map((m, i) => (
+                <TeamCard key={m.role + i} member={m} index={i} />
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <Marquee />
 
@@ -604,6 +612,6 @@ export default function AboutPage() {
 
       <Footer />
       <WhatsappFloat />
-    </>
+    </HomeConfigProvider>
   )
 }

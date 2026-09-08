@@ -1,19 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { reviews } from '@/data/reviews'
+import { useHomeConfig } from '@/lib/home-config/client'
 
 function useVisibleCount() {
-  const [count, setCount] = useState(4)
+  const [count, setCount] = useState(1)
   useEffect(() => {
+    const xl = window.matchMedia('(min-width: 80rem)')
+    const lg = window.matchMedia('(min-width: 64rem)')
+    const sm = window.matchMedia('(min-width: 40rem)')
     const update = () => {
-      const w = window.innerWidth
-      setCount(w < 640 ? 1 : w < 1024 ? 2 : w < 1280 ? 3 : 4)
+      if (xl.matches) setCount(4)
+      else if (lg.matches) setCount(3)
+      else if (sm.matches) setCount(2)
+      else setCount(1)
     }
     update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
+    xl.addEventListener('change', update)
+    lg.addEventListener('change', update)
+    sm.addEventListener('change', update)
+    return () => {
+      xl.removeEventListener('change', update)
+      lg.removeEventListener('change', update)
+      sm.removeEventListener('change', update)
+    }
   }, [])
   return count
 }
@@ -28,6 +39,9 @@ function initials(name: string) {
 }
 
 export default function Reviews() {
+  const { config } = useHomeConfig()
+  const reviews = config.reviews.reviews
+  const heading = config.reviews
   const visible = useVisibleCount()
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -49,15 +63,32 @@ export default function Reviews() {
   const goNext = () =>
     setIndex((i) => (i >= maxIndex ? 0 : i + 1))
 
+  const touchX = useRef<number | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchX.current = e.touches[0].clientX
+    setPaused(true)
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchX.current
+    touchX.current = null
+    setPaused(false)
+    if (Math.abs(dx) < 40) return
+    if (dx < 0) goNext()
+    else goPrev()
+  }
+
+  if (reviews.length === 0) return null
+
   return (
     <section className="relative w-full bg-[#eae1d2] py-14 md:py-24 2xl:py-28 overflow-hidden">
-      <div className="max-w-[90rem] mx-auto px-6 3xl:max-w-[112rem]">
+      <div className="max-w-7xl mx-auto px-6 2xl:max-w-[1400px] 3xl:max-w-[1700px]">
         <div className="grid gap-10 lg:grid-cols-10 lg:gap-14 items-center">
           <div className="lg:col-span-3">
             <div className="relative">
               <span
                 aria-hidden
-                className="absolute -top-20 -left-10 font-serif text-[13rem] md:text-[18rem] leading-none text-gold/15 select-none"
+                className="absolute -top-14 -left-6 font-serif text-[8rem] sm:-top-20 sm:-left-10 sm:text-[13rem] md:text-[18rem] leading-none text-gold/15 select-none"
               >
                 &ldquo;
               </span>
@@ -69,17 +100,16 @@ export default function Reviews() {
                 transition={{ duration: 0.7, ease: 'easeOut' }}
               >
                 <span className="text-[#B8941E] text-xs tracking-[0.3em] uppercase font-medium">
-                  Client Love
+                  {heading.eyebrow}
                 </span>
                 <h2 className="mt-3 font-[var(--font-poppins)] font-semibold text-4xl md:text-5xl xl:text-6xl 2xl:text-[4.25rem] text-[#161616] leading-[1.05] tracking-wide">
-                  HEAR FROM
+                  {heading.titleLine1}
                   <br />
-                  CLIENTS
+                  {heading.titleLine2}
                 </h2>
                 <div className="mt-5 w-16 h-px bg-[#B8941E]" />
                 <p className="mt-5 text-[#3d3d3d] text-sm 2xl:text-base font-light leading-relaxed max-w-xs">
-                  Real words from real weddings — couples who trusted TJ with
-                  their once-in-a-lifetime moments.
+                  {heading.description}
                 </p>
                 <div className="mt-6 flex items-center gap-2.5">
                   <div className="flex gap-1">
@@ -95,7 +125,7 @@ export default function Reviews() {
                     ))}
                   </div>
                   <span className="text-[#8a857e] text-xs tracking-wide">
-                    5.0 &middot; Google Reviews
+                    {heading.rating}
                   </span>
                 </div>
               </motion.div>
@@ -104,9 +134,11 @@ export default function Reviews() {
 
           <div className="lg:col-span-7">
             <div
-              className="relative"
+              className="relative touch-pan-y"
               onMouseEnter={() => setPaused(true)}
               onMouseLeave={() => setPaused(false)}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
             >
               <button
                 onClick={goPrev}
@@ -195,18 +227,22 @@ export default function Reviews() {
               </div>
 
               {maxIndex > 10 ? null : (
-                <div className="mt-7 flex justify-center gap-2">
+                <div className="mt-5 flex flex-wrap justify-center gap-0.5 px-4">
                   {Array.from({ length: maxIndex + 1 }).map((_, i) => (
                     <button
                       key={i}
                       onClick={() => setIndex(i)}
                       aria-label={`Slide ${i + 1}`}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        i === safeIndex
-                          ? 'w-7 bg-[#B8941E]'
-                          : 'w-1.5 bg-black/15 hover:bg-black/30'
-                      }`}
-                    />
+                      className="flex items-center justify-center p-2.5"
+                    >
+                      <span
+                        className={`block h-1.5 rounded-full transition-all duration-300 ${
+                          i === safeIndex
+                            ? 'w-7 bg-[#B8941E]'
+                            : 'w-1.5 bg-black/15'
+                        }`}
+                      />
+                    </button>
                   ))}
                 </div>
               )}

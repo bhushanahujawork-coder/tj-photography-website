@@ -18,16 +18,24 @@
   --font-poppins: "Poppins", sans-serif;
 }
 
-html {
-  scroll-behavior: smooth;
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
-  background: #eae1d2;
+  background: var(--home-bg, #eae1d2);
   color: #161616;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Editor-driven global background + grain — defaults match the original design (#eae1d2 cream). Noise default is 5% — the recommended premium setting (range 0–30%). */
+:root {
+  --home-bg: #eae1d2;
+  --home-noise: 0.05;
 }
 
 ::selection {
@@ -35,29 +43,29 @@ body {
   color: #161616;
 }
 
-/* Custom scrollbar — thin dark strip with rounded grey pill */
+/* Custom scrollbar — track matches site bg */
 ::-webkit-scrollbar {
   width: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #161616;
+  background: var(--home-bg, #eae1d2);
 }
 
 ::-webkit-scrollbar-thumb {
   background: #8a8a8a;
   border-radius: 9999px;
-  border: 2px solid #161616;
+  border: 2px solid var(--home-bg, #eae1d2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: #6f6f6f;
 }
 
 @supports (scrollbar-width: thin) {
   body {
     scrollbar-width: thin;
-    scrollbar-color: #8a8a8a #161616;
+    scrollbar-color: #8a8a8a var(--home-bg, #eae1d2);
   }
 }
 
@@ -114,19 +122,32 @@ input[type="color"]::-webkit-color-swatch {
 
 /* Film card — organic scoop pocket for the floating arrow (scales with card) */
 .film-card-scoop {
-  -webkit-mask-image: radial-gradient(circle 52px at calc(100% - 20px) calc(100% - 28px), transparent 0, transparent 52px, black 52.1px);
-  mask-image: radial-gradient(circle 52px at calc(100% - 20px) calc(100% - 28px), transparent 0, transparent 52px, black 52.1px);
+  -webkit-mask-image: radial-gradient(circle 40px at calc(100% - 20px) calc(100% - 24px), transparent 0, transparent 40px, black 40.1px);
+  mask-image: radial-gradient(circle 40px at calc(100% - 20px) calc(100% - 24px), transparent 0, transparent 40px, black 40.1px);
 }
 
-/* Grain / noise overlay (5%) */
+@media (max-width: 767px) {
+  .film-card-scoop {
+    -webkit-mask-image: radial-gradient(circle 30px at calc(100% - 16px) calc(100% - 16px), transparent 0, transparent 30px, black 30.1px);
+    mask-image: radial-gradient(circle 30px at calc(100% - 16px) calc(100% - 16px), transparent 0, transparent 30px, black 30.1px);
+  }
+}
+
+/* Grain / noise overlay — below navbar (z-50) & floating UI so it never sits on top of menus */
 .grain {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 30;
   pointer-events: none;
-  opacity: 0.05;
+  opacity: var(--home-noise, 0.25);
   mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 1 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='4.5' intercept='-1.75'/%3E%3CfeFuncG type='linear' slope='4.5' intercept='-1.75'/%3E%3CfeFuncB type='linear' slope='4.5' intercept='-1.75'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (max-width: 768px) {
+  .grain {
+    mix-blend-mode: normal;
+  }
 }
 
 /* TJ logo — website color letters with 30% grain inside, no background */
@@ -147,11 +168,23 @@ input[type="color"]::-webkit-color-swatch {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 1 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='4.5' intercept='-1.75'/%3E%3CfeFuncG type='linear' slope='4.5' intercept='-1.75'/%3E%3CfeFuncB type='linear' slope='4.5' intercept='-1.75'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 300px;
   opacity: 0.3;
   mix-blend-mode: overlay;
 }
 
-/* Smooth transitions for theme */
-*, *::before, *::after { transition-property: background-color, border-color; transition-duration: 200ms; }
+/* Smooth transitions for theme — scoped (universal * transition caused style-recalc jank on low-end phones) */
+body, header, footer, nav, section, a, button, input, textarea, select {
+  transition-property: background-color, border-color;
+  transition-duration: 200ms;
+}
+
+/* Respect reduced-motion — kill decorative animations */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-kenburns,
+  .animate-shimmer {
+    animation: none;
+  }
+}

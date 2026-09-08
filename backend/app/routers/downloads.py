@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, Query, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, get_db_session
+from app.core.dependencies import get_current_active_user, get_db_session, require_wedding_access
 from app.schemas.common import SuccessResponse
 from app.schemas.download import (
     DownloadRequest,
     DownloadResponse,
     DownloadRecordResponse,
+    ShareGalleryResponse,
     ShareLinkCreateRequest,
     ShareLinkResponse,
 )
@@ -74,7 +75,7 @@ async def get_download(
 )
 async def list_share_links(
     wedding_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("view")),
     download_service: DownloadService = Depends(get_download_service),
 ) -> list[ShareLinkResponse]:
     return await download_service.list_share_links(wedding_id, current_user)
@@ -90,7 +91,7 @@ async def list_share_links(
 async def create_share_link(
     wedding_id: str,
     request: ShareLinkCreateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("share")),
     download_service: DownloadService = Depends(get_download_service),
 ) -> ShareLinkResponse:
     return await download_service.create_share_link(wedding_id, request, current_user)
@@ -121,3 +122,16 @@ async def access_share_link(
     download_service: DownloadService = Depends(get_download_service),
 ) -> ShareLinkResponse:
     return await download_service.access_share_link(code)
+
+
+@router.get(
+    "/share/{code}",
+    response_model=ShareGalleryResponse,
+    operation_id="share_gallery_access",
+    summary="Resolve a share code into a gallery context (wedding + capabilities, public)",
+)
+async def access_share_gallery(
+    code: str,
+    download_service: DownloadService = Depends(get_download_service),
+) -> ShareGalleryResponse:
+    return await download_service.access_share_gallery(code)

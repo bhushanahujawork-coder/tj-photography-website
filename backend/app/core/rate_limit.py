@@ -33,6 +33,11 @@ class TokenBucket:
 _default_bucket = TokenBucket(rate=100.0 / 60.0, burst=100)
 _auth_bucket = TokenBucket(rate=10.0 / 60.0, burst=10)
 
+_upload_bucket = TokenBucket(
+    rate=settings.UPLOAD_RATE_PER_MINUTE / 60.0,
+    burst=settings.UPLOAD_RATE_BURST,
+)
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -43,6 +48,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if request.url.path.startswith("/api/v1/auth"):
             bucket = _auth_bucket
+        elif request.url.path.startswith("/api/v1/upload"):
+            bucket = _upload_bucket
         else:
             bucket = _default_bucket
 

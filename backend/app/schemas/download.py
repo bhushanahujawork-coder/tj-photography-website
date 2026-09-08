@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
 
+from app.schemas.wedding import WeddingResponse
+
 
 class DownloadRequest(BaseModel):
     wedding_id: str = Field(description="Wedding ID to download from")
@@ -58,5 +60,22 @@ class ShareLinkResponse(BaseModel):
     expires_at: Optional[datetime] = Field(default=None, description="Link expiration timestamp")
     access_count: int = Field(default=0, ge=0, description="Number of times accessed")
     created_at: datetime = Field(description="Creation timestamp")
+
+    model_config = {"from_attributes": True}
+
+
+class ShareGalleryResponse(BaseModel):
+    """Public share-gallery access: wedding profile + share link capabilities.
+
+    Recycled whenever a share code is resolved so clients can render a
+    branded gallery header without exposing the whole wedding object to
+    unauthenticated callers (same shape the public by-code endpoint exposes).
+    """
+
+    wedding: WeddingResponse = Field(description="Wedding profile for the shared gallery")
+    share: ShareLinkResponse = Field(description="Resolved share link")
+    download_allowed: bool = Field(
+        description="True when the link grants download of original-size files",
+    )
 
     model_config = {"from_attributes": True}

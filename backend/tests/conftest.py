@@ -20,13 +20,6 @@ test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest_asyncio.fixture(autouse=True)
 async def setup_database():
     async with test_engine.begin() as conn:
@@ -38,7 +31,14 @@ async def setup_database():
 
 async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
     async with TestSessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
 app.dependency_overrides[get_db] = override_get_db
@@ -114,6 +114,11 @@ async def auth_headers(admin_token: str) -> dict:
 @pytest_asyncio.fixture
 async def photographer_headers(photographer_token: str) -> dict:
     return {"Authorization": f"Bearer {photographer_token}"}
+
+
+@pytest_asyncio.fixture
+async def editor_headers(editor_token: str) -> dict:
+    return {"Authorization": f"Bearer {editor_token}"}
 
 
 @pytest_asyncio.fixture

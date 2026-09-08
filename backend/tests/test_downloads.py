@@ -3,6 +3,8 @@
 import pytest
 from httpx import AsyncClient
 
+from tests.test_uploads_security import _create_wedding
+
 
 @pytest.fixture
 async def wedding_id(client: AsyncClient, admin_token) -> str:
@@ -44,6 +46,47 @@ async def test_list_downloads(client: AsyncClient, test_users, admin_token):
     response = await client.get("/api/v1/downloads", headers=headers)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_list_downloads_is_user_scoped(
+    client: AsyncClient, test_users, photographer_headers, editor_headers,
+):
+    """A non-admin user must never see another user's download records (IDOR)."""
+    wedding_id = await _create_wedding(client, photographer_headers)
+    create = await client.post(
+        "/api/v1/downloads",
+        json={"wedding_id": wedding_id, "photo_ids": ["photo-1"], "type": "single"},
+        headers=photographer_headers,
+    )
+    assert create.status_code == 201
+    created_id = create.json()["id"]
+
+    other_list = await client.get("/api/v1/downloads", headers=editor_headers)
+    assert other_list.status_code == 200
+    assert all(d["id"] != created_id for d in other_list.json())
+
+
+@pytest.mark.asyncio
+async def test_list_downloads_with_records(
+    client: AsyncClient, test_users, photographer_headers,
+):
+    """Listing returns full records (wedding/user names) once history exists."""
+    wedding_id = await _create_wedding(client, photographer_headers)
+    create = await client.post(
+        "/api/v1/downloads",
+        json={"wedding_id": wedding_id, "photo_ids": ["photo-1"], "type": "single"},
+        headers=photographer_headers,
+    )
+    assert create.status_code == 201
+
+    response = await client.get("/api/v1/downloads", headers=photographer_headers)
+    assert response.status_code == 200
+    records = response.json()
+    assert any(d["id"] == create.json()["id"] for d in records)
+    for record in records:
+        assert record["created_at"]
+        assert record["wedding_name"]
 
 
 @pytest.mark.asyncio

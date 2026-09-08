@@ -66,6 +66,10 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+  const [showDeleted, setShowDeleted] = useState(false)
+  const [deletedPhotos, setDeletedPhotos] = useState<Photo[]>([])
+  const [deletedLoading, setDeletedLoading] = useState(false)
+  const [refreshTick, setRefreshTick] = useState(0)
   const [slideshowActive, setSlideshowActive] = useState(false)
 
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({
@@ -120,7 +124,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
       }
     }
     loadData()
-  }, [id])
+  }, [id, refreshTick])
 
   const allPhotos = useMemo(
     () => apiPhotos
@@ -166,6 +170,98 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
     setFavoritesOnly(false)
     setHighlightsOnly(false)
   }, [])
+
+  const loadDeleted = useCallback(async () => {
+    try {
+      const res = await apiFetch<{
+        items?: Array<{
+          id?: string
+          weddingId?: string | null
+          filename?: string
+          altText?: string
+          width?: number | null
+          height?: number | null
+          blurHash?: string | null
+          favorite?: boolean
+          isHighlight?: boolean
+          createdAt?: string
+          camera?: string | null
+          lens?: string | null
+          folderId?: string | null
+          albumId?: string | null
+        }>
+      }>(
+        `/api/v1/weddings/${id}/photos?page_size=200&include_deleted=true`,
+      )
+      const items: Photo[] = (res?.items || []).map(p => ({
+        id: p.id || '',
+        weddingId: p.weddingId || '',
+        src: '',
+        alt: p.altText || p.filename || 'Deleted photo',
+        width: p.width || 800,
+        height: p.height || 600,
+        blurDataURL: p.blurHash || undefined,
+        favorite: p.favorite || false,
+        isHighlight: p.isHighlight || false,
+        createdAt: p.createdAt || '',
+        exif: (p.camera || p.lens) ? { camera: p.camera || undefined, lens: p.lens || undefined } : undefined,
+        folderId: p.folderId || undefined,
+        albumId: p.albumId || undefined,
+      }))
+      setDeletedPhotos(items)
+    } catch (e) {
+      console.error('Failed to load deleted photos', e)
+      setShowDeleted(false)
+      toast({ title: 'Cannot view deleted photos', variant: 'error' })
+    } finally {
+      setDeletedLoading(false)
+    }
+  }, [id, toast])
+
+  const showDeletedSection = useCallback((value: boolean) => {
+    setShowDeleted(value)
+    if (value) {
+      setDeletedLoading(true)
+      loadDeleted()
+    }
+  }, [loadDeleted])
+
+  const handleRestoreDeleted = useCallback(async (photoId: string) => {
+    try {
+      await apiFetch(`/api/v1/photos/batch/restore`, {
+        method: 'POST',
+        body: JSON.stringify({ photo_ids: [photoId] }),
+      })
+      toast({ title: 'Photo restored', variant: 'success' })
+      setDeletedLoading(true)
+      await loadDeleted()
+      setRefreshTick(t => t + 1)
+    } catch {
+      toast({ title: 'Could not restore photo', variant: 'error' })
+    }
+  }, [loadDeleted, toast])
+
+  const handlePurgeDeleted = useCallback((photoId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Delete permanently',
+      description: 'This permanently removes the photo from storage. This action cannot be undone.',
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, open: false }))
+        try {
+          await apiFetch(`/api/v1/photos/batch/delete`, {
+            method: 'POST',
+            body: JSON.stringify({ photo_ids: [photoId], permanent: true }),
+          })
+          toast({ title: 'Photo permanently deleted', variant: 'success' })
+          setDeletedLoading(true)
+          await loadDeleted()
+        } catch {
+          toast({ title: 'Could not delete photo', variant: 'error' })
+        }
+      },
+    })
+  }, [loadDeleted, toast])
 
   const handleImageLoad = useCallback((id: string) => {
     setLoadedImages(prev => new Set(prev).add(id))
@@ -519,6 +615,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
               </div>
               <Switch checked={favoritesOnly} onChange={setFavoritesOnly} label="Favorites" />
               <Switch checked={highlightsOnly} onChange={setHighlightsOnly} label="Highlights" />
+              <Switch checked={showDeleted} onChange={showDeletedSection} label="Deleted" />
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   <Icon name="x" size={14} />
@@ -535,6 +632,56 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
 
           {loading ? (
             <GallerySkeleton />
+          ) : showDeleted ? (
+            deletedLoading ? (
+              <GallerySkeleton />
+            ) : deletedPhotos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
+                  <Icon name="trash" size={28} className="text-muted" />
+                </div>
+                <h3 className="font-serif text-lg text-foreground">No deleted photos</h3>
+                <p className="mt-1 text-sm text-muted">
+                  Photos you delete will appear here so you can restore or permanently remove them.
+                </p>
+              </div>
+            ) : (
+              <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-3">
+                {deletedPhotos.map((photo, index) => (
+                  <motion.div
+                    key={photo.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.02 }}
+                    className="group relative mb-3 break-inside-avoid overflow-hidden rounded-xl border border-white/5 bg-card transition-all duration-300"
+                  >
+                    <div
+                      className="relative w-full overflow-hidden opacity-40 saturate-0"
+                      style={{ aspectRatio: `${photo.width}/${photo.height}` }}
+                    >
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1a1a1a] via-[#2a2015] to-[#1a1a1a]">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10">
+                          <Icon name="trash" size={20} className="text-white/25" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+                      <p className="truncate text-xs text-white/85">{photo.alt}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => handleRestoreDeleted(photo.id)}>
+                          <Icon name="refresh" size={13} />
+                          Restore
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => handlePurgeDeleted(photo.id)}>
+                          <Icon name="trash" size={13} />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )
           ) : galleryEmpty ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5">

@@ -7,6 +7,7 @@ interface ImageCardProps extends ImageData {
   priority?: boolean
   className?: string
   overlay?: string
+  sizes?: string
 }
 
 export default function ImageCard({
@@ -17,6 +18,7 @@ export default function ImageCard({
   priority = false,
   className = '',
   overlay,
+  sizes,
 }: ImageCardProps) {
   const hasImage = Boolean(src)
 
@@ -87,7 +89,7 @@ export default function ImageCard({
         priority={priority}
         loading={priority ? undefined : 'lazy'}
         className="w-full h-full object-cover"
-        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        sizes={sizes ?? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'}
         draggable={false}
         onContextMenu={(e) => e.preventDefault()}
         onDragStart={(e) => e.preventDefault()}

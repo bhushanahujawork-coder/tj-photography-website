@@ -2,31 +2,32 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { hero } from '@/data/homepage'
-
-const { slides, interval } = hero
+import { useHomeConfig } from '@/lib/home-config/client'
 
 export default function HeroSection() {
+  const { config } = useHomeConfig()
+  const { slides, interval } = config.hero
   const [current, setCurrent] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
 
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % slides.length)
-  }, [])
+  }, [slides.length])
 
   const prev = useCallback(() => {
     setCurrent((prev) => (prev - 1 + slides.length) % slides.length)
-  }, [])
+  }, [slides.length])
 
   useEffect(() => {
-    if (isPaused) return
+    if (isPaused || slides.length === 0) return
     const timer = setInterval(next, interval)
     return () => clearInterval(timer)
-  }, [next, isPaused])
+  }, [next, isPaused, interval, slides.length])
 
   return (
     <section
-      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-black"
+      data-hero
+      className="relative min-h-svh flex flex-col items-center justify-center overflow-hidden bg-black"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -53,11 +54,11 @@ export default function HeroSection() {
 
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-      <button onClick={prev} className="hidden md:flex absolute left-8 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center rounded-full border border-white/15 text-white/30 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all duration-300 text-lg backdrop-blur-sm" aria-label="Previous slide">
+      <button onClick={prev} className="flex absolute left-3 sm:left-8 top-1/2 -translate-y-1/2 z-20 w-11 h-11 sm:w-12 sm:h-12 items-center justify-center rounded-full border border-white/15 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all duration-300 text-lg backdrop-blur-sm active:bg-white/10" aria-label="Previous slide">
         {'\u2190'}
       </button>
 
-      <button onClick={next} className="hidden md:flex absolute right-8 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center rounded-full border border-white/15 text-white/30 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all duration-300 text-lg backdrop-blur-sm" aria-label="Next slide">
+      <button onClick={next} className="flex absolute right-3 sm:right-8 top-1/2 -translate-y-1/2 z-20 w-11 h-11 sm:w-12 sm:h-12 items-center justify-center rounded-full border border-white/15 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all duration-300 text-lg backdrop-blur-sm active:bg-white/10" aria-label="Next slide">
         {'\u2192'}
       </button>
 

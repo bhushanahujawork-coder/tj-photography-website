@@ -16,6 +16,7 @@ class AlbumUpdateRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, description="Album name")
     description: Optional[str] = Field(default=None, description="Album description")
     cover_image: Optional[str] = Field(default=None, description="Cover image URL or file path")
+    clear_cover: Optional[bool] = Field(default=False, description="Clear the cover image")
 
     model_config = {"from_attributes": True}
 

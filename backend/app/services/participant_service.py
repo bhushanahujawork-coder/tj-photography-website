@@ -65,10 +65,10 @@ class ParticipantService:
         return [ParticipantResponse.model_validate(p) for p in items]
 
     async def update_role(
-        self, participant_id: str, data, current_user: dict,
+        self, participant_id: str, wedding_id: str, data, current_user: dict,
     ) -> ParticipantResponse:
         participant = await self.participant_repo.get(participant_id)
-        if not participant:
+        if not participant or participant.wedding_id != wedding_id:
             raise NotFoundError(message="Participant not found")
 
         updated = await self.participant_repo.update(
@@ -77,16 +77,16 @@ class ParticipantService:
         logger.info("Participant %s role updated to %s", participant_id, data.role)
         return ParticipantResponse.model_validate(updated)
 
-    async def remove(self, participant_id: str, current_user: dict) -> None:
+    async def remove(self, participant_id: str, wedding_id: str, current_user: dict) -> None:
         participant = await self.participant_repo.get(participant_id)
-        if not participant:
+        if not participant or participant.wedding_id != wedding_id:
             raise NotFoundError(message="Participant not found")
         await self.participant_repo.delete(participant_id)
         logger.info("Participant removed: %s", participant_id)
 
-    async def accept_invitation(self, participant_id: str, data) -> ParticipantResponse:
+    async def accept_invitation(self, participant_id: str, wedding_id: str, data) -> ParticipantResponse:
         participant = await self.participant_repo.get(participant_id)
-        if not participant:
+        if not participant or participant.wedding_id != wedding_id:
             raise NotFoundError(message="Participant not found")
 
         if participant.status != ParticipantStatus.PENDING.value:
@@ -100,9 +100,9 @@ class ParticipantService:
         logger.info("Participant %s accepted invite", participant_id)
         return ParticipantResponse.model_validate(updated)
 
-    async def resend_invitation(self, participant_id: str, current_user: dict) -> SuccessResponse:
+    async def resend_invitation(self, participant_id: str, wedding_id: str, current_user: dict) -> SuccessResponse:
         participant = await self.participant_repo.get(participant_id)
-        if not participant:
+        if not participant or participant.wedding_id != wedding_id:
             raise NotFoundError(message="Participant not found")
         logger.info("Invite resent to %s", participant.email or participant.phone)
         return SuccessResponse(message="Invitation resent")

@@ -5,8 +5,12 @@ from fastapi import Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.errors import ForbiddenError, UnauthorizedError
+from app.core.errors import ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.security import decode_token
+from app.models.base import ParticipantStatus
+from app.repositories.participant_repository import ParticipantRepository
+from app.repositories.wedding_repository import WeddingRepository
+from app.services.permission_service import PermissionService
 
 get_db_session = get_db
 
@@ -75,3 +79,53 @@ def require_permission(permission: str):
             )
         return current_user
     return permission_checker
+
+
+async def resolve_wedding_role(
+    db: AsyncSession, wedding_id: str, current_user: dict[str, Any]
+) -> str:
+    """Resolve the caller's role within a wedding.
+
+    Returns 'admin' for platform admins, 'photographer' for the wedding owner,
+    or the participant role for accepted participants. Raises otherwise.
+    """
+    if current_user.get("role") == "admin":
+        return "admin"
+
+    wedding = await WeddingRepository(db).get(wedding_id)
+    if not wedding:
+        raise NotFoundError(message="Wedding not found")
+    if wedding.photographer_id == current_user.get("sub"):
+        return "photographer"
+
+    participant = await ParticipantRepository(db).get_by_wedding_user(
+        wedding_id, current_user.get("sub", "")
+    )
+    if participant and participant.status == ParticipantStatus.ACCEPTED.value:
+        return participant.role
+
+    raise ForbiddenError(message="You do not have access to this wedding")
+
+
+def require_wedding_access(permission: str):
+    """Dependency ensuring the caller can access a wedding with a permission.
+
+    Usage: ``wedding_id: str, current_user: dict = Depends(require_wedding_access("view"))``
+    """
+
+    async def checker(
+        wedding_id: str,
+        current_user: dict[str, Any] = Depends(get_current_active_user),
+        db: AsyncSession = Depends(get_db_session),
+    ) -> dict[str, Any]:
+        role = await resolve_wedding_role(db, wedding_id, current_user)
+        allowed = await PermissionService(db).has_permission(
+            wedding_id, role, permission,
+        )
+        if not allowed:
+            raise ForbiddenError(
+                message=f"Permission '{permission}' denied for role '{role}'"
+            )
+        return current_user
+
+    return checker

@@ -99,12 +99,13 @@ class UserService:
         user = await self.user_repo.get(user_id)
         if not user:
             raise NotFoundError(message="User not found")
+        from app.services.permission_service import _DEFAULT_PERMISSIONS
+
+        role = user.role or ""
+        defaults = _DEFAULT_PERMISSIONS.get(role, [])
         return [
-            PermissionResponse(
-                wedding_id="*",
-                role=user.role,
-                permissions=["view", "download"],
-            )
+            PermissionResponse(role=role, permission=p, allowed=True)
+            for p in defaults
         ]
 
     async def get_storage_usage(self, current_user: dict) -> StorageUsageResponse:

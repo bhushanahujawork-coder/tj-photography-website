@@ -68,7 +68,7 @@ export const about = {
       { name: '', role: 'Retoucher', bio: '', image: '/studio/team-m.svg' },
       { name: '', role: 'Client Experience', bio: '', image: '/studio/team-n.svg' },
       { name: '', role: 'Studio Support', bio: '', image: '/studio/team-o.svg' },
-    ],
+    ] as AboutMember[],
   },
   cities: {
     eyebrow: 'Cities We Serve',

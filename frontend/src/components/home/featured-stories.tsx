@@ -7,9 +7,11 @@ import SectionHeading from '@/components/ui/section-heading'
 import ImageCard from '@/components/ui/image-card'
 
 export default function FeaturedStories() {
+  if (stories.length === 0) return null
+
   return (
     <section className="py-20 md:py-28 border-t border-white/5">
-      <div className="max-w-6xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-6 2xl:max-w-[1400px] 3xl:max-w-[1700px]">
         <SectionHeading
           title={storiesHeading.title}
           description={storiesHeading.description}
@@ -19,9 +21,7 @@ export default function FeaturedStories() {
           {stories.map((story, i) => (
             <motion.article
               key={story.id}
-              className={`grid md:grid-cols-2 gap-8 md:gap-12 items-center ${
-                i % 2 === 1 ? 'md:direction-rtl' : ''
-              }`}
+              className="grid md:grid-cols-2 gap-8 md:gap-12 items-center"
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -34,6 +34,7 @@ export default function FeaturedStories() {
                     width={800}
                     height={1000}
                     className="w-full h-full"
+                    sizes="(max-width: 767px) 92vw, 45vw"
                     priority={i === 0}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

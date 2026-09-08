@@ -1,49 +1,65 @@
 'use client'
 
+import { useHomeConfig } from '@/lib/home-config/client'
+import type { FooterSocialConfig } from '@/lib/home-config/types'
+
+function SocialIcon({ type }: { type: FooterSocialConfig['type'] }) {
+  if (type === 'instagram') {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+        <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" />
+        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+      </svg>
+    )
+  }
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12.04 17.48a5.44 5.44 0 0 1-2.98-.9l-3.42 1.1 1.1-3.33a5.44 5.44 0 1 1 5.3 3.13m6.51-6.02a6.57 6.57 0 0 0-11.17-4.88 6.57 6.57 0 0 0-.95 8.27l-1.2 3.68 3.8-1.22a6.57 6.57 0 0 0 9.52-5.85Zm.6-6.12A7.57 7.57 0 0 0 12.04 1C4.88 1 1.32 7.27 1.32 12.06c0 1.5.38 2.97 1.11 4.27L1 20.17l4.12-1.32a11.56 11.56 0 0 0 6.92 1.2c7.15 0 10.73-6.26 10.73-11.06a6.56 6.56 0 0 0-1.4-4.65Z" />
+    </svg>
+  )
+}
+
 export default function Footer() {
+  const { config } = useHomeConfig()
+  const { footer } = config
   return (
     <footer className="relative w-full bg-[#eae1d2] border-t border-gold/15">
       <div className="max-w-7xl mx-auto px-6 py-12 md:py-16 2xl:max-w-[1400px] 3xl:max-w-[1700px]">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <h3 className="flex items-baseline gap-1.5 font-[var(--font-poppins)] text-lg xl:text-xl text-foreground tracking-[0.08em] uppercase">
-              <span className="font-bold">TJ</span>
-              <span className="font-medium">Photography</span>
+              <span className="font-bold">{footer.brandLeft}</span>
+              <span className="font-medium">{footer.brandRight}</span>
             </h3>
           </div>
 
           <div className="flex items-center gap-5">
-            <a
-              href="https://www.instagram.com/tj_photography_____/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-9 h-9 rounded-full border border-gold/20 flex items-center justify-center text-gold/60 hover:text-gold hover:border-gold/50 transition-all duration-300"
-              aria-label="Instagram"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" />
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-              </svg>
-            </a>
-            <a
-              href="https://wa.me/919033320304"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-9 h-9 rounded-full border border-gold/20 flex items-center justify-center text-gold/60 hover:text-gold hover:border-gold/50 transition-all duration-300"
-              aria-label="WhatsApp"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-              </svg>
-            </a>
+            {footer.social.map((s) => (
+              <a
+                key={s.type}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-11 h-11 rounded-full border border-gold/20 flex items-center justify-center text-gold/60 hover:text-gold hover:border-gold/50 transition-all duration-300"
+                aria-label={s.label}
+              >
+                <SocialIcon type={s.type} />
+              </a>
+            ))}
           </div>
         </div>
 
         <div className="mt-10 pt-8 border-t border-border text-center">
-          <p className="text-muted/60 text-[10px] tracking-[0.3em] uppercase">
-            &copy; 2026 TJ Photography &nbsp;·&nbsp; All rights reserved &nbsp;·&nbsp; Designed by Bhushan Ahuja
-          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3 text-muted/60 text-[10px] tracking-[0.3em] uppercase">
+            <span>
+              &copy; {footer.copyrightYear} {footer.brandLeft} {footer.brandRight}
+            </span>
+            <span aria-hidden className="hidden sm:inline">&middot;</span>
+            <span>{footer.rightsLine}</span>
+            <span aria-hidden className="hidden sm:inline">&middot;</span>
+            <span>{footer.designerLine}</span>
+          </div>
         </div>
       </div>
     </footer>

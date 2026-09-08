@@ -6,7 +6,11 @@ export default function WhatsappFloat() {
       href="https://wa.me/919033320304"
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-[60] w-14 h-14 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-110 transition-all duration-300"
+      className="fixed z-[60] w-14 h-14 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-110 active:scale-95 transition-all duration-300"
+      style={{
+        bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+        right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+      }}
       aria-label="Chat on WhatsApp"
     >
       <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">

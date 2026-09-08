@@ -44,9 +44,9 @@ class FolderService:
         logger.info("Folder created: %s in wedding %s", folder.id, wedding_id)
         return FolderResponse.model_validate(folder)
 
-    async def get_folder(self, folder_id: str, current_user: dict) -> FolderResponse:
+    async def get_folder(self, folder_id: str, wedding_id: str, current_user: dict) -> FolderResponse:
         folder = await self.folder_repo.get(folder_id)
-        if not folder:
+        if not folder or folder.wedding_id != wedding_id:
             raise NotFoundError(message="Folder not found")
         return FolderResponse.model_validate(folder)
 
@@ -55,9 +55,9 @@ class FolderService:
         items.sort(key=lambda f: f.sort_order)
         return [FolderResponse.model_validate(f) for f in items]
 
-    async def update_folder(self, folder_id: str, data, current_user: dict) -> FolderResponse:
+    async def update_folder(self, folder_id: str, wedding_id: str, data, current_user: dict) -> FolderResponse:
         folder = await self.folder_repo.get(folder_id)
-        if not folder:
+        if not folder or folder.wedding_id != wedding_id:
             raise NotFoundError(message="Folder not found")
 
         updated = await self.folder_repo.update(
@@ -69,9 +69,9 @@ class FolderService:
         logger.info("Folder updated: %s", folder_id)
         return FolderResponse.model_validate(updated)
 
-    async def delete_folder(self, folder_id: str, current_user: dict) -> None:
+    async def delete_folder(self, folder_id: str, wedding_id: str, current_user: dict) -> None:
         folder = await self.folder_repo.get(folder_id)
-        if not folder:
+        if not folder or folder.wedding_id != wedding_id:
             raise NotFoundError(message="Folder not found")
 
         wedding = await self.wedding_repo.get(folder.wedding_id)
@@ -85,9 +85,9 @@ class FolderService:
 
         logger.info("Folder deleted: %s", folder_id)
 
-    async def reorder_folder(self, folder_id: str, data, current_user: dict) -> FolderResponse:
+    async def reorder_folder(self, folder_id: str, wedding_id: str, data, current_user: dict) -> FolderResponse:
         folder = await self.folder_repo.get(folder_id)
-        if not folder:
+        if not folder or folder.wedding_id != wedding_id:
             raise NotFoundError(message="Folder not found")
 
         updated = await self.folder_repo.update(

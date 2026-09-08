@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, get_db_session
+from app.core.dependencies import get_db_session, require_wedding_access
 from app.schemas.common import SuccessResponse
 from app.schemas.participant import (
     ParticipantBulkInviteRequest,
@@ -33,7 +33,7 @@ async def get_participant_service(
 )
 async def list_participants(
     wedding_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("view")),
     participant_service: ParticipantService = Depends(get_participant_service),
 ) -> list[ParticipantResponse]:
     return await participant_service.list_participants(wedding_id, current_user)
@@ -49,7 +49,7 @@ async def list_participants(
 async def invite_participant(
     wedding_id: str,
     request: ParticipantInviteRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("share")),
     participant_service: ParticipantService = Depends(get_participant_service),
 ) -> ParticipantResponse:
     return await participant_service.invite(wedding_id, request, current_user)
@@ -65,7 +65,7 @@ async def invite_participant(
 async def bulk_invite_participants(
     wedding_id: str,
     request: ParticipantBulkInviteRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("share")),
     participant_service: ParticipantService = Depends(get_participant_service),
 ) -> list[ParticipantResponse]:
     return await participant_service.bulk_invite(wedding_id, request, current_user)
@@ -81,10 +81,10 @@ async def update_participant(
     wedding_id: str,
     participant_id: str,
     request: ParticipantUpdateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("share")),
     participant_service: ParticipantService = Depends(get_participant_service),
 ) -> ParticipantResponse:
-    return await participant_service.update_role(participant_id, request, current_user)
+    return await participant_service.update_role(participant_id, wedding_id, request, current_user)
 
 
 @router.delete(
@@ -96,10 +96,10 @@ async def update_participant(
 async def remove_participant(
     wedding_id: str,
     participant_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("share")),
     participant_service: ParticipantService = Depends(get_participant_service),
 ) -> None:
-    await participant_service.remove(participant_id, current_user)
+    await participant_service.remove(participant_id, wedding_id, current_user)
 
 
 @router.post(
@@ -114,7 +114,7 @@ async def accept_invitation(
     request: ParticipantStatusUpdate,
     participant_service: ParticipantService = Depends(get_participant_service),
 ) -> ParticipantResponse:
-    return await participant_service.accept_invitation(participant_id, request)
+    return await participant_service.accept_invitation(participant_id, wedding_id, request)
 
 
 @router.post(
@@ -126,7 +126,7 @@ async def accept_invitation(
 async def resend_invitation(
     wedding_id: str,
     participant_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("share")),
     participant_service: ParticipantService = Depends(get_participant_service),
 ) -> SuccessResponse:
-    return await participant_service.resend_invitation(participant_id, current_user)
+    return await participant_service.resend_invitation(participant_id, wedding_id, current_user)

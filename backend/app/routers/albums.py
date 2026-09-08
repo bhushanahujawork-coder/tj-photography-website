@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, get_db_session
+from app.core.dependencies import get_db_session, require_wedding_access
 from app.schemas.album import AlbumCreateRequest, AlbumResponse, AlbumUpdateRequest
 from app.services.album_service import AlbumService
 
@@ -26,7 +26,7 @@ async def get_album_service(
 )
 async def list_albums(
     wedding_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("view")),
     album_service: AlbumService = Depends(get_album_service),
 ) -> list[AlbumResponse]:
     return await album_service.list_albums(wedding_id, current_user)
@@ -42,7 +42,7 @@ async def list_albums(
 async def create_album(
     wedding_id: str,
     request: AlbumCreateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     album_service: AlbumService = Depends(get_album_service),
 ) -> AlbumResponse:
     return await album_service.create_album(wedding_id, request, current_user)
@@ -57,10 +57,10 @@ async def create_album(
 async def get_album(
     wedding_id: str,
     album_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("view")),
     album_service: AlbumService = Depends(get_album_service),
 ) -> AlbumResponse:
-    return await album_service.get_album(album_id, current_user)
+    return await album_service.get_album(album_id, wedding_id, current_user)
 
 
 @router.put(
@@ -73,10 +73,10 @@ async def update_album(
     wedding_id: str,
     album_id: str,
     request: AlbumUpdateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     album_service: AlbumService = Depends(get_album_service),
 ) -> AlbumResponse:
-    return await album_service.update_album(album_id, request, current_user)
+    return await album_service.update_album(album_id, wedding_id, request, current_user)
 
 
 @router.delete(
@@ -88,7 +88,7 @@ async def update_album(
 async def delete_album(
     wedding_id: str,
     album_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("delete")),
     album_service: AlbumService = Depends(get_album_service),
 ) -> None:
-    await album_service.delete_album(album_id, current_user)
+    await album_service.delete_album(album_id, wedding_id, current_user)

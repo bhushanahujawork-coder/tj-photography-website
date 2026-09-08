@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, get_current_user, get_db_session
+from app.core.dependencies import get_current_active_user, get_current_user, get_db_session, require_wedding_access
 from app.schemas.common import SuccessResponse
 from app.schemas.wedding import (
     WeddingCreateRequest,
@@ -73,7 +73,7 @@ async def create_wedding(
 )
 async def get_wedding(
     wedding_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("view")),
     wedding_service: WeddingService = Depends(get_wedding_service),
 ) -> WeddingResponse:
     return await wedding_service.get_wedding(wedding_id, current_user)
@@ -88,7 +88,7 @@ async def get_wedding(
 async def update_wedding(
     wedding_id: str,
     request: WeddingUpdateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     wedding_service: WeddingService = Depends(get_wedding_service),
 ) -> WeddingResponse:
     return await wedding_service.update_wedding(wedding_id, request, current_user)
@@ -102,7 +102,7 @@ async def update_wedding(
 )
 async def delete_wedding(
     wedding_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("delete")),
     wedding_service: WeddingService = Depends(get_wedding_service),
 ) -> None:
     await wedding_service.delete_wedding(wedding_id, current_user)
@@ -117,7 +117,7 @@ async def delete_wedding(
 async def duplicate_wedding(
     wedding_id: str,
     request: WeddingDuplicateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     wedding_service: WeddingService = Depends(get_wedding_service),
 ) -> WeddingResponse:
     return await wedding_service.duplicate_wedding(wedding_id, request, current_user)
@@ -132,7 +132,7 @@ async def duplicate_wedding(
 async def publish_wedding(
     wedding_id: str,
     request: WeddingPublishRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     wedding_service: WeddingService = Depends(get_wedding_service),
 ) -> WeddingResponse:
     return await wedding_service.publish_wedding(wedding_id, request, current_user)
@@ -146,7 +146,7 @@ async def publish_wedding(
 )
 async def archive_wedding(
     wedding_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     wedding_service: WeddingService = Depends(get_wedding_service),
 ) -> WeddingResponse:
     return await wedding_service.archive_wedding(wedding_id, current_user)

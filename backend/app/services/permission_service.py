@@ -46,6 +46,21 @@ class PermissionService:
             permissions=matrix,
         )
 
+    async def has_permission(self, wedding_id: str, role: str, permission: str) -> bool:
+        """Check a role's default permission, overridden by wedding-level config.
+
+        'admin' bypasses the matrix entirely (full access).
+        """
+        if role == "admin":
+            return True
+        default_allowed = permission in _DEFAULT_PERMISSIONS.get(role, [])
+        override = await self.repo.get_by_wedding_role_permission(
+            wedding_id, role, permission,
+        )
+        if override is not None:
+            return override.allowed
+        return default_allowed
+
     async def update_permissions(
         self, wedding_id: str, request: PermissionUpdateRequest,
         current_user: dict,

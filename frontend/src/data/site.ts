@@ -33,14 +33,14 @@ export const site = {
       { label: 'Find My Wedding', href: '#wedding' },
     ] satisfies NavLink[],
     social: [
-      { label: 'Instagram', href: '#' },
+      { label: 'Instagram', href: 'https://www.instagram.com/tj_photography_____/' },
       { label: 'Facebook', href: '#' },
       { label: 'Pinterest', href: '#' },
     ] satisfies SocialLink[],
     contact: {
-      email: 'hello@tjphotography.com',
-      phone: '+1 (555) 123-4567',
-      location: 'New York City',
+      email: '',
+      phone: '+91 90333 20304',
+      location: 'Jamnagar, Gujarat',
     } satisfies ContactInfo,
   },
   cta: {

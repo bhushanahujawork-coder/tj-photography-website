@@ -1,0 +1,160 @@
+import { DEFAULT_SECTION_ORDER, type HomeConfig } from './types'
+import { films as defaultFilms } from '@/data/films'
+
+export const HOME_CONFIG_VERSION = 2
+
+export const HOME_CONFIG_DEFAULTS: HomeConfig = {
+  version: HOME_CONFIG_VERSION,
+  global: {
+    background: '#eae1d2',
+    noise: 5,
+  },
+  sectionOrder: DEFAULT_SECTION_ORDER,
+  header: {
+    logo: {
+      src: '/logo/tj-logo-white.png',
+      alt: 'TJ Photography',
+      // ONE global geometry. The render engine derives a smooth fluid curve from `size`
+      // (≈163px on a 390px portrait phone → up to `size` on a 1440px desktop).
+      x: 76,
+      y: 6,
+      size: 272,
+    },
+    nav: {
+      offset: 253,
+      spacing: 32,
+      links: [
+        { label: 'Weddings', href: '#weddings' },
+        { label: 'Films', href: '/films' },
+        { label: 'About Us', href: '/about' },
+        { label: 'Contact Us', href: '#contact' },
+      ],
+    },
+    // Sparse exceptions that reproduce the current (pre-migration) per-device design exactly.
+    // Hide them in the editor's Advanced section — the fluid engine alone renders a smooth ramp.
+overrides: {
+        tablet: {
+          logo: { x: 20, y: 0, size: 231 },
+          nav: { offset: -14 },
+        },
+        mobile: {
+          logo: { x: 163, size: 163 },
+          nav: { offset: -14 },
+        },
+      },
+  },
+  hero: {
+    slides: [
+      { src: '/hero/hero-1.webp', alt: 'Luxury wedding photography' },
+      { src: '/hero/hero-3.webp', alt: 'Fine art wedding portrait' },
+    ],
+    interval: 5000,
+  },
+  soulCinema: {
+    eyebrow: 'Soul Cinema',
+    title: 'Feel the Wedding. Not Just See It.',
+    description:
+      'A cinematic glimpse into the moments we live behind the lens — every frame, a story worth keeping.',
+    videoSrc: '/cinema/cinema.mp4',
+    poster: '/cinema/poster.jpg',
+    frame: 'global',
+    type: {},
+  },
+  portfolio: {
+    headingTitle: 'Our Portfolio',
+    headingDescription: 'A curated selection of our favorite moments.',
+    images: [
+      { id: 'p1', src: '/portfolio/portfolio-01.webp', alt: 'Bride and groom at golden hour', width: 800, height: 800 },
+      { id: 'p2', src: '/portfolio/portfolio-02.webp', alt: 'Wedding ceremony by the ocean', width: 800, height: 800 },
+      { id: 'p3', src: '/portfolio/portfolio-03.webp', alt: 'Bride portrait with soft window light', width: 800, height: 800 },
+      { id: 'p4', src: '/portfolio/portfolio-04.webp', alt: 'Couple walking through a blooming garden', width: 800, height: 800 },
+      { id: 'p5', src: '/portfolio/portfolio-05.webp', alt: 'Wedding reception at dusk', width: 800, height: 800 },
+      { id: 'p6', src: '/portfolio/portfolio-06.webp', alt: 'Bridal party in golden field', width: 800, height: 800 },
+      { id: 'p7', src: '/portfolio/portfolio-07.webp', alt: 'First dance under string lights', width: 800, height: 800 },
+      { id: 'p8', src: '', alt: 'Aerial drone shot of beach wedding', width: 800, height: 800, overlay: 'Love, captured in "CINEMATIC" frames' },
+      { id: 'p9', src: '/portfolio/portfolio-09.webp', alt: 'Mandap decoration details', width: 800, height: 800 },
+      { id: 'p10', src: '/portfolio/portfolio-10.webp', alt: 'Bride getting ready', width: 800, height: 800 },
+      { id: 'p11', src: '/portfolio/portfolio-11.webp', alt: 'Groom portrait in traditional wear', width: 800, height: 800 },
+      { id: 'p12', src: '/portfolio/portfolio-12.webp', alt: 'Couple with family at ceremony', width: 800, height: 800 },
+      { id: 'p13', src: '/portfolio/portfolio-13.webp', alt: 'Ring exchange close-up', width: 800, height: 800 },
+      { id: 'p14', src: '/portfolio/portfolio-14.webp', alt: 'Fireworks at wedding night', width: 800, height: 800 },
+      { id: 'p15', src: '/portfolio/portfolio-15.webp', alt: 'Couple walking away at sunset', width: 800, height: 800 },
+    ],
+  },
+  reviews: {
+    eyebrow: 'Client Love',
+    titleLine1: 'HEAR FROM',
+    titleLine2: 'CLIENTS',
+    description:
+      'Real words from real weddings — couples who trusted TJ with their once-in-a-lifetime moments.',
+    rating: '5.0 · Google Reviews',
+    reviews: [
+      { name: 'Riya & Kunal Shah', city: 'Jamnagar', state: 'Gujarat', quote: 'TJ Photography captured every emotion of our wedding so beautifully. The cinematic film still gives us goosebumps every time we watch it.' },
+      { name: 'Meera & Arjun Patel', city: 'Rajkot', state: 'Gujarat', quote: 'From the first meeting to the final delivery, everything was smooth. The photos feel like art — we have framed them all over our home.' },
+      { name: 'Priya & Rohan Mehta', city: 'Ahmedabad', state: 'Gujarat', quote: 'The highlight film was beyond our expectations. Every guest asked us who shot our wedding. Truly the best decision we made.' },
+      { name: 'Nisha & Vihaan Desai', city: 'Vadodara', state: 'Gujarat', quote: 'They blended into the wedding like family yet captured everything perfectly. The candid moments they caught are priceless.' },
+      { name: 'Anjali & Dev Patel', city: 'Surat', state: 'Gujarat', quote: 'Stunning photography, elegant editing and on-time delivery. Our wedding album tells our story exactly the way we lived it.' },
+      { name: 'Sana & Zaid Shaikh', city: 'Ahmedabad', state: 'Gujarat', quote: 'Professional, creative and so patient with our family photos. The pictures are so natural — we relive our wedding every day.' },
+      { name: 'Kinjal & Harsh Joshi', city: 'Jamnagar', state: 'Gujarat', quote: 'The cinematic film felt like a movie trailer of our love story. Worth every rupee and more. Highly recommended!' },
+      { name: 'Divya & Nikhil Trivedi', city: 'Rajkot', state: 'Gujarat', quote: 'Beautiful lighting, perfect angles and lovely colours. TJ Photography understood our vision from day one and delivered magic.' },
+      { name: 'Pooja & Aryan Bhatt', city: 'Vadodara', state: 'Gujarat', quote: 'Our families still talk about the wedding film. The team was professional, punctual and made everyone feel comfortable in front of the camera.' },
+      { name: 'Shivani & Jay Prajapati', city: 'Surat', state: 'Gujarat', quote: 'From engagement to the final ceremony, every single moment was captured with so much heart. Thank you for preserving our memories forever.' },
+      { name: 'Kavya & Rohit Malhotra', city: 'Mumbai', state: 'Maharashtra', quote: 'We flew down for our destination wedding and TJ Photography handled everything flawlessly. The film is pure cinema — our guests could not stop talking about it.' },
+      { name: 'Ishita & Kabir Mehta', city: 'Anand', state: 'Gujarat', quote: 'Warm, humble and incredibly talented. They made our small-town wedding look like a grand production. Every photo is a treasure.' },
+      { name: 'Tanvi & Sarthak Shah', city: 'Mumbai', state: 'Maharashtra', quote: 'The candid shots were so natural that we felt like we were living the moments again. Professional team with a pure artisanal touch.' },
+      { name: 'Dhara & Yash Patel', city: 'Anand', state: 'Gujarat', quote: 'They captured our pheras, our laughter and even our tears of joy. The album is beyond beautiful — thank you for everything.' },
+      { name: 'Ritu & Manan Joshi', city: 'Mumbai', state: 'Maharashtra', quote: 'Elegant, on time and full of creative ideas. The highlight video made our families emotional. Worth every penny.' },
+      { name: 'Jinal & Dhruv Desai', city: 'Anand', state: 'Gujarat', quote: 'Our wedding was a three-day celebration and they covered every single ritual with so much care. The quality is simply outstanding.' },
+      { name: 'Falguni & Kirtan Panchal', city: 'Surat', state: 'Gujarat', quote: 'The photos have such a premium feel. They understood our vibe instantly and delivered exactly what we dreamed of.' },
+      { name: 'Hetal & Mihir Thakkar', city: 'Rajkot', state: 'Gujarat', quote: 'Very friendly team that made everyone comfortable. The final film brought tears to my parents eyes. Highly recommended for any wedding.' },
+      { name: 'Kruti & Ved Vyas', city: 'Ahmedabad', state: 'Gujarat', quote: 'From the engagement shoot to the reception, every frame was perfect. The editing style is classy and timeless.' },
+      { name: 'Aarti & Nirav Raval', city: 'Jamnagar', state: 'Gujarat', quote: 'A local photographer who shoots at international standards. The story they told through the film is something we will cherish forever.' },
+    ],
+  },
+  contact: {
+    eyebrow: 'Visit Our Office',
+    title: 'Find TJ Photography in Jamnagar',
+    addressLines: [
+      'UNICORN PRIME, 414,',
+      'Near Honda Showroom,',
+      'Jamnagar – Lalpur Road,',
+      'Jamnagar, Gujarat 361006',
+    ],
+    phone: {
+      label: '090333 20304',
+      href: 'tel:09033320304',
+    },
+    instagram: {
+      label: '@tj_photography_____',
+      href: 'https://www.instagram.com/tj_photography_____/',
+    },
+    mapSrc: 'https://www.google.com/maps?q=22.4236237,70.067044&output=embed',
+    mapLink: 'https://www.google.com/maps/dir/?api=1&destination=22.4236237,70.067044',
+    directionsLabel: 'Get Direction',
+  },
+  footer: {
+    brandLeft: 'TJ',
+    brandRight: 'Photography',
+    social: [
+      { type: 'instagram', label: 'Instagram', href: 'https://www.instagram.com/tj_photography_____/' },
+      { type: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/919033320304' },
+    ],
+    copyrightYear: '2026',
+    rightsLine: 'All rights reserved',
+    designerLine: 'Designed by Bhushan Ahuja',
+  },
+  films: {
+    cards: defaultFilms.map((f) => ({
+      id: f.id,
+      couple: f.couple,
+      description: f.description,
+      embedId: f.embedId,
+    })),
+    style: {
+      nameSize: 21,
+      descriptionSize: 13,
+      aspect: '4/3',
+      gap: 32,
+    },
+  },
+}

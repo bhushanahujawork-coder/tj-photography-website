@@ -12,9 +12,12 @@ export default function TestimonialsSection() {
   }, [])
 
   useEffect(() => {
+    if (testimonialsData.length === 0) return
     const interval = setInterval(next, 5000)
     return () => clearInterval(interval)
   }, [next])
+
+  if (testimonialsData.length === 0) return null
 
   return (
     <section className="py-20 md:py-28 border-t border-white/5">

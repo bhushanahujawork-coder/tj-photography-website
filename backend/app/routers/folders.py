@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, get_db_session
+from app.core.dependencies import get_db_session, require_wedding_access
 from app.schemas.folder import FolderCreateRequest, FolderResponse, FolderUpdateRequest
 from app.services.folder_service import FolderService
 
@@ -26,7 +26,7 @@ async def get_folder_service(
 )
 async def list_folders(
     wedding_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("view")),
     folder_service: FolderService = Depends(get_folder_service),
 ) -> list[FolderResponse]:
     return await folder_service.list_folders(wedding_id, current_user)
@@ -42,7 +42,7 @@ async def list_folders(
 async def create_folder(
     wedding_id: str,
     request: FolderCreateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     folder_service: FolderService = Depends(get_folder_service),
 ) -> FolderResponse:
     return await folder_service.create_folder(wedding_id, request, current_user)
@@ -57,10 +57,10 @@ async def create_folder(
 async def get_folder(
     wedding_id: str,
     folder_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("view")),
     folder_service: FolderService = Depends(get_folder_service),
 ) -> FolderResponse:
-    return await folder_service.get_folder(folder_id, current_user)
+    return await folder_service.get_folder(folder_id, wedding_id, current_user)
 
 
 @router.put(
@@ -73,10 +73,10 @@ async def update_folder(
     wedding_id: str,
     folder_id: str,
     request: FolderUpdateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     folder_service: FolderService = Depends(get_folder_service),
 ) -> FolderResponse:
-    return await folder_service.update_folder(folder_id, request, current_user)
+    return await folder_service.update_folder(folder_id, wedding_id, request, current_user)
 
 
 @router.delete(
@@ -88,10 +88,10 @@ async def update_folder(
 async def delete_folder(
     wedding_id: str,
     folder_id: str,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("delete")),
     folder_service: FolderService = Depends(get_folder_service),
 ) -> None:
-    await folder_service.delete_folder(folder_id, current_user)
+    await folder_service.delete_folder(folder_id, wedding_id, current_user)
 
 
 @router.put(
@@ -104,7 +104,7 @@ async def reorder_folder(
     wedding_id: str,
     folder_id: str,
     request: FolderUpdateRequest,
-    current_user: dict = Depends(get_current_active_user),
+    current_user: dict = Depends(require_wedding_access("edit")),
     folder_service: FolderService = Depends(get_folder_service),
 ) -> FolderResponse:
-    return await folder_service.reorder_folder(folder_id, request, current_user)
+    return await folder_service.reorder_folder(folder_id, wedding_id, request, current_user)

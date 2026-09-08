@@ -1,5 +1,8 @@
 # AGENTS.md — AI Agent Instructions (Session: 27 July 2026)
 
+> **Session start rule:** Every new session, read `README.md` FIRST, start from the
+> CURRENT CHECKPOINT section, and continue from there before doing any work.
+
 ## Project Overview
 
 TJ Photography AI Wedding Gallery — a production-ready local MVP for managing

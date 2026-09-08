@@ -3,16 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3008",
+    "dev:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-stop.ps1",
+    "dev:start": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-start.ps1",
+    "dev:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-restart.ps1",
+    "dev:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-restart.ps1 -Clean",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3008",
     "lint": "eslint"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.0",
+    "@vercel/kv": "^3.0.0",
     "framer-motion": "^12.42.2",
     "next": "16.2.11",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "0.34.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -1,10 +1,12 @@
 import logging
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.dependencies import get_current_active_user, get_db_session
+from app.core.errors import ValidationError
 from app.schemas.common import SuccessResponse
 from app.schemas.photo import PhotoResponse
 from app.schemas.upload import (
@@ -18,6 +20,29 @@ from app.services.upload_service import UploadService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/upload", tags=["Uploads"])
+
+_READ_CHUNK = 1024 * 1024  # 1 MiB
+
+
+async def _read_limited(file: UploadFile) -> bytes:
+    """Read an upload in bounded chunks, rejecting anything over UPLOAD_MAX_SIZE.
+
+    Guards against oversized bodies being buffered entirely into memory.
+    """
+    max_size = settings.UPLOAD_MAX_SIZE
+    total = 0
+    chunks: list[bytes] = []
+    while True:
+        chunk = await file.read(_READ_CHUNK)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_size:
+            raise ValidationError(
+                message=f"File exceeds maximum upload size of {max_size // (1024 * 1024)} MB"
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 async def get_upload_service(
@@ -55,7 +80,7 @@ async def upload_file(
     current_user: dict = Depends(get_current_active_user),
     upload_service: UploadService = Depends(get_upload_service),
 ) -> PhotoResponse:
-    file_data = await file.read()
+    file_data = await _read_limited(file)
     return await upload_service.upload_file(upload_id, file_id, file_data, current_user)
 
 

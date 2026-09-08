@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"}
     IMAGE_SIZES: dict[str, str] = {"original": "", "medium": "1200", "thumbnail": "400"}
 
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3005", "http://localhost:3008"]
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"
 
@@ -44,6 +44,11 @@ class Settings(BaseSettings):
 
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_DEFAULT: str = "100/minute"
+
+    UPLOAD_MAX_SESSIONS_PER_USER: int = 3
+    UPLOAD_MAX_FILES_PER_SESSION: int = 1000
+    UPLOAD_RATE_PER_MINUTE: int = 120
+    UPLOAD_RATE_BURST: int = 120
 
     @field_validator("SECRET_KEY")
     @classmethod

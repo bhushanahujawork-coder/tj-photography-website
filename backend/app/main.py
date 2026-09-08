@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import engine, Base
@@ -12,9 +11,9 @@ from app.core.middleware import register_middleware
 from app.core.rate_limit import register_rate_limit
 from app.routers import (
     auth_router, weddings_router, albums_router, folders_router,
-    photos_router, participants_router, uploads_router, downloads_router,
-    activity_router, notifications_router, users_router, settings_router,
-    dashboard_router, permissions_router,
+    photos_router, participants_router, uploads_router, media_router,
+    downloads_router, activity_router, notifications_router, users_router,
+    settings_router, dashboard_router, permissions_router,
 )
 
 logger = setup_logging()
@@ -53,11 +52,6 @@ app = FastAPI(
 register_middleware(app)
 register_rate_limit(app)
 
-import os as _os
-_storage_path = _os.path.abspath(settings.STORAGE_LOCAL_PATH)
-_os.makedirs(_storage_path, exist_ok=True)
-app.mount("/storage", StaticFiles(directory=_storage_path), name="storage")
-
 app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
@@ -77,6 +71,7 @@ app.include_router(folders_router)
 app.include_router(photos_router)
 app.include_router(participants_router)
 app.include_router(uploads_router)
+app.include_router(media_router)
 app.include_router(downloads_router)
 app.include_router(activity_router)
 app.include_router(notifications_router)

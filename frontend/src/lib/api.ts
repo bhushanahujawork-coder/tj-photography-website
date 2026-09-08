@@ -1,5 +1,19 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const USE_MOCK = process.env.NEXT_PUBLIC_MOCK_API !== 'false'
+const USE_MOCK = process.env.NEXT_PUBLIC_MOCK_API === 'true'
+
+/**
+ * Absolute origin the backend is served from. Used to turn relative media
+ * paths (e.g. `/api/v1/media/share/{code}/photos/{id}/content`) into fully
+ * qualified image URLs that can be streamed from a public share gallery.
+ */
+export const API_BASE_URL = API_BASE
+
+/** Prefix a relative API/media path with the backend origin. */
+export function mediaUrl(path: string): string {
+  if (!path) return ''
+  if (/^https?:\/\//.test(path)) return path
+  return `${API_BASE}${path}`
+}
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null
@@ -177,6 +191,34 @@ export function apiFetchWithProgress(
     }
     xhr.send(body)
   })
+}
+
+/**
+ * Fetch raw bytes (media derivations, PNG/ZIP downloads) with the current
+ * session token attached. Used instead of a plain `<img>`/anchor for
+ * authorized media routes that must never expose their bytes anonymously.
+ */
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  const token = getToken()
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    let backendMessage: string
+    try {
+      const parsed = JSON.parse(body)
+      backendMessage = parsed.error?.message || parsed.detail || parsed.message || res.statusText
+    } catch {
+      backendMessage = body || res.statusText
+    }
+    const err = new ApiError(`${API_BASE}${path}`, res.status, body, backendMessage)
+    console.error(`[apiFetch] ${res.status} ${res.statusText} — ${path}`)
+    console.error(`  URL:     ${API_BASE}${path}`)
+    console.error(`  Message: ${backendMessage}`)
+    throw err
+  }
+  return res.blob()
 }
 
 

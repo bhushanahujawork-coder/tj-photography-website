@@ -85,6 +85,7 @@ class PhotoFilterParams(BaseModel):
     favorite: Optional[bool] = Field(default=None, description="Filter by favorite status")
     is_highlight: Optional[bool] = Field(default=None, description="Filter by highlight status")
     is_hidden: Optional[bool] = Field(default=None, description="Filter by hidden status")
+    include_deleted: Optional[bool] = Field(default=None, description="Include soft-deleted photos (delete permission required)")
     date_from: Optional[datetime] = Field(default=None, description="Filter photos taken after this date")
     date_to: Optional[datetime] = Field(default=None, description="Filter photos taken before this date")
     sort_by: str = Field(default="created_at", description="Field to sort by")

@@ -59,7 +59,7 @@ function AnimatedCounter({
       )}
       {done && (
         <motion.span
-          className="absolute left-1/2 top-4 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full bg-gold/10 blur-2xl pointer-events-none"
+          className="absolute left-1/2 top-4 -translate-x-1/2 -translate-y-1/2 w-28 h-28 md:w-40 md:h-40 rounded-full bg-gold/10 blur-2xl pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 0.8, 0] }}
           transition={{ duration: 1.6, ease: 'easeOut' }}
@@ -90,6 +90,8 @@ export default function Statistics() {
   const { scrollYProgress } = useScroll()
   const bgY = useTransform(scrollYProgress, [0, 1], [0, 180])
 
+  if (statistics.length === 0) return null
+
   return (
     <section className="relative py-10 md:py-14 2xl:py-20 bg-gradient-to-b from-background via-[#f5efe5] to-background border-t border-border/60 overflow-hidden">
       <motion.div
@@ -101,7 +103,7 @@ export default function Statistics() {
           backgroundSize: 'auto, auto, 28px 28px',
         }}
       />
-      <div className="max-w-6xl mx-auto px-6 relative 2xl:max-w-[1400px] 3xl:max-w-[1700px]">
+      <div className="max-w-7xl mx-auto px-6 relative 2xl:max-w-[1400px] 3xl:max-w-[1700px]">
         <motion.h2
           className="font-serif text-2xl md:text-4xl xl:text-5xl text-center text-foreground mb-8 md:mb-10 tracking-wide"
           initial={{ opacity: 0, y: 20 }}

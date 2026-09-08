@@ -39,8 +39,8 @@ export const findWedding = {
 
 export const instagram = {
   title: 'Follow Our Journey',
-  username: '@tjphotography',
-  followUrl: 'https://instagram.com/tjphotography',
+  username: '@tj_photography_____',
+  followUrl: 'https://www.instagram.com/tj_photography_____/',
 }
 
 export const storiesHeading = {

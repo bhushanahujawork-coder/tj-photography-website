@@ -5,6 +5,23 @@ from pathlib import Path
 from app.core.config import settings
 
 
+def _sanitize_relative(path: str) -> str:
+    """Reject path traversal in storage keys/relative paths.
+
+    Accepts POSIX and Windows separators but never allows a segment to escape
+    the storage root (no '..'), absolute paths, or empty paths.
+    """
+    if not path or path in (".", "/", "\\"):
+        raise ValueError("invalid storage path")
+    normalized = path.replace("\\", "/")
+    if normalized.startswith("/"):
+        raise ValueError("absolute storage path not allowed")
+    parts = normalized.split("/")
+    if any(p in ("..", "") for p in parts) or ":" in normalized:
+        raise ValueError("path traversal detected")
+    return normalized
+
+
 class StorageBackend(ABC):
     @abstractmethod
     async def save(self, path: str, data: bytes, content_type: str) -> str:
@@ -36,36 +53,48 @@ class LocalStorage(StorageBackend):
         self.root = Path(settings.STORAGE_LOCAL_PATH).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
 
+    def resolve_safe(self, path: str) -> Path:
+        """Rescue a relative path under the storage root, forbidding escapes."""
+        relative = _sanitize_relative(path)
+        full = (self.root / Path(relative)).resolve()
+        if full != self.root and self.root not in full.parents:
+            raise ValueError("path escapes storage root")
+        return full
+
     async def save(self, path: str, data: bytes, content_type: str) -> str:
-        full_path = self.root / path
+        full_path = self.resolve_safe(path)
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_bytes(data)
         return str(full_path)
 
     async def read(self, path: str) -> bytes | None:
-        full_path = self.root / path
+        full_path = self.resolve_safe(path)
         if not full_path.exists():
             return None
         return full_path.read_bytes()
 
     async def delete(self, path: str) -> None:
-        full_path = self.root / path
+        full_path = self.resolve_safe(path)
         if full_path.exists():
             full_path.unlink()
 
     async def get_url(self, path: str) -> str:
-        full_path = self.root / path
-        return f"file://{full_path.resolve()}"
+        full_path = self.resolve_safe(path)
+        return f"file://{full_path}"
 
     async def exists(self, path: str) -> bool:
-        return (self.root / path).exists()
+        try:
+            return self.resolve_safe(path).exists()
+        except ValueError:
+            return False
 
     async def list_files(self, prefix: str) -> list[str]:
-        target = self.root / prefix
+        relative = _sanitize_relative(prefix)
+        target = self.root / Path(relative)
         if not target.exists():
             return []
         return [
-            str(p.relative_to(self.root))
+            str(p.relative_to(self.root)).replace(os.sep, "/")
             for p in target.rglob("*")
             if p.is_file()
         ]
@@ -85,38 +114,43 @@ class S3Storage(StorageBackend):
         if not self.bucket:
             raise ValueError("R2_BUCKET must be set when using S3 storage")
 
+    def _key(self, path: str) -> str:
+        return _sanitize_relative(path)
+
     async def save(self, path: str, data: bytes, content_type: str) -> str:
+        key = self._key(path)
         self.client.put_object(
             Bucket=self.bucket,
-            Key=path,
+            Key=key,
             Body=data,
             ContentType=content_type,
         )
-        return path
+        return key
 
     async def read(self, path: str) -> bytes | None:
         try:
-            response = self.client.get_object(Bucket=self.bucket, Key=path)
+            response = self.client.get_object(Bucket=self.bucket, Key=self._key(path))
             return response["Body"].read()
         except Exception:
             return None
 
     async def delete(self, path: str) -> None:
-        self.client.delete_object(Bucket=self.bucket, Key=path)
+        self.client.delete_object(Bucket=self.bucket, Key=self._key(path))
 
     async def get_url(self, path: str) -> str:
-        url = f"{settings.R2_ENDPOINT}/{self.bucket}/{path}"
+        url = f"{settings.R2_ENDPOINT}/{self.bucket}/{self._key(path)}"
         return url
 
     async def exists(self, path: str) -> bool:
         try:
-            self.client.head_object(Bucket=self.bucket, Key=path)
+            self.client.head_object(Bucket=self.bucket, Key=self._key(path))
             return True
         except Exception:
             return False
 
     async def list_files(self, prefix: str) -> list[str]:
-        response = self.client.list_objects_v2(Bucket=self.bucket, Prefix=prefix)
+        key_prefix = _sanitize_relative(prefix)
+        response = self.client.list_objects_v2(Bucket=self.bucket, Prefix=key_prefix)
         if "Contents" not in response:
             return []
         return [obj["Key"] for obj in response["Contents"]]

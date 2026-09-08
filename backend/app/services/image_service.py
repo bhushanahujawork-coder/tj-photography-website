@@ -12,16 +12,110 @@ from app.core.storage import get_storage
 
 logger = logging.getLogger(__name__)
 
+MAX_IMAGE_PIXELS = 40_000_000
+MAX_IMAGE_DIMENSION = 16_384
+
+_MAGIC_PREFIXES: dict[str, list[bytes]] = {
+    "jpeg": [b"\xff\xd8\xff"],
+    "png": [b"\x89PNG\r\n\x1a\n"],
+    "webp": [b"RIFF"],
+    "tiff": [b"II*\x00", b"MM\x00*"],
+}
+
+_EXT_TO_FORMAT: dict[str, str] = {
+    ".jpg": "jpeg",
+    ".jpeg": "jpeg",
+    ".png": "png",
+    ".webp": "webp",
+    ".tiff": "tiff",
+}
+
+_EXT_TO_MIME: dict[str, str] = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".tiff": "image/tiff",
+}
+
+
+def _sniff_format(raw: bytes) -> str | None:
+    for fmt, prefixes in _MAGIC_PREFIXES.items():
+        for prefix in prefixes:
+            if len(raw) >= len(prefix) and raw.startswith(prefix):
+                if fmt == "webp":
+                    if len(raw) >= 12 and raw[8:12] == b"WEBP":
+                        return "webp"
+                    return None
+                return fmt
+    return None
+
 
 class ImageProcessingService:
     def __init__(self):
         self.storage = get_storage()
+
+    async def validate_bytes(self, raw_bytes: bytes, filename: str) -> tuple[int, int]:
+        """Validate uploaded bytes BEFORE persistence.
+
+        Checks: allowed extension, magic-byte signature matches the declared
+        extension, PIL can fully verify the image, and pixel/dimension caps.
+        Returns (width, height) of the decoded image. Raises ValidationError.
+        """
+        ext = Path(filename).suffix.lower()
+        if ext not in settings.ALLOWED_EXTENSIONS:
+            raise ValidationError(message=f"File type not allowed: {ext}")
+
+        if ext == ".heic":
+            raise ValidationError(
+                message="HEIC format is not supported yet — please convert to JPEG or PNG"
+            )
+
+        fmt = _sniff_format(raw_bytes)
+        if fmt is None:
+            raise ValidationError(
+                message="File content does not match a supported image format"
+            )
+
+        expected = _EXT_TO_FORMAT.get(ext)
+        if expected and expected != fmt:
+            raise ValidationError(
+                message=f"File extension {ext} does not match actual format '{fmt}'"
+            )
+
+        width = height = 0
+        try:
+            with Image.open(io.BytesIO(raw_bytes)) as img:
+                img.verify()
+            with Image.open(io.BytesIO(raw_bytes)) as img:
+                width, height = img.size
+        except Exception as e:
+            raise ValidationError(message=f"Invalid image file: {e}")
+
+        if not width or not height:
+            raise ValidationError(message="Image has no usable dimensions")
+
+        if width * height > MAX_IMAGE_PIXELS:
+            raise ValidationError(
+                message=f"Image too large: {width}x{height} exceeds {MAX_IMAGE_PIXELS} pixels"
+            )
+        if max(width, height) > MAX_IMAGE_DIMENSION:
+            raise ValidationError(
+                message=f"Image dimension exceeds max {MAX_IMAGE_DIMENSION}px"
+            )
+        return width, height
+
+    def mime_for_ext(self, ext: str) -> str:
+        return _EXT_TO_MIME.get(ext.lower(), "application/octet-stream")
 
     async def process(self, storage_path: str, filename: str, wedding_id: str, file_id: str,
                       watermark_settings: dict | None = None) -> dict:
         raw = await self.storage.read(storage_path)
         if raw is None:
             raise ValidationError(message="Image file not found in storage")
+
+        # Defense-in-depth: the bytes may have been touched since upload validation.
+        await self.validate_bytes(raw, filename)
 
         ext = Path(filename).suffix.lower()
         base_relative = f"weddings/{wedding_id}"
@@ -35,24 +129,21 @@ class ImageProcessingService:
 
             result["width"], result["height"] = img.size
 
-            blur_hash = self._compute_blur_hash(img)
-            result["blur_hash"] = blur_hash
+            result["blur_hash"] = self._compute_blur_hash(img)
 
             watermark_enabled = watermark_settings and watermark_settings.get("enabled", False)
+            webp_quality = int(sizes.get("quality", "85"))
 
-            original_img = self._apply_watermark(img.copy(), watermark_settings) if watermark_enabled else img
-            original_rel = f"{base_relative}/originals/{file_id}.webp"
-            buf = io.BytesIO()
-            webp_quality = int(settings.IMAGE_SIZES.get("quality", "85"))
-            original_img.save(buf, format="WEBP", quality=webp_quality, optimize=True)
-            await self.storage.save(original_rel, buf.getvalue(), "image/webp")
-            result["original"] = original_rel
+            # The true original is preserved as-is on disk (private). Never rewrite it.
+            result["original"] = storage_path
+            result["file_size"] = len(raw)
 
             if "medium" in sizes and sizes["medium"]:
                 max_dim = int(sizes["medium"])
-                medium_rel = f"{base_relative}/medium/{file_id}.webp"
+                medium_rel = f"{base_relative}/optimized/{file_id}.webp"
                 medium_img = self._resize(img, max_dim)
-                medium_img = self._apply_watermark(medium_img, watermark_settings) if watermark_enabled else medium_img
+                if watermark_enabled:
+                    medium_img = self._apply_watermark(medium_img, watermark_settings)
                 buf = io.BytesIO()
                 medium_img.save(buf, format="WEBP", quality=webp_quality - 5, optimize=True)
                 await self.storage.save(medium_rel, buf.getvalue(), "image/webp")
@@ -68,13 +159,10 @@ class ImageProcessingService:
                 result["thumbnail"] = thumb_rel
 
             img.close()
-
-            await self.storage.delete(storage_path)
-
         except Exception as e:
             raise ValidationError(message=f"Image processing failed: {e}")
 
-        logger.info("Image processed as WebP: %s -> %s.webp", filename, file_id)
+        logger.info("Image processed: %s -> %s (original preserved)", filename, file_id)
         return result
 
     def _apply_watermark(self, img: Image.Image, settings: dict | None) -> Image.Image:

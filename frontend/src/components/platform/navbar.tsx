@@ -43,6 +43,14 @@ export function PlatformNavbar({ onMenuClick }: PlatformNavbarProps) {
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
+        <Link
+          href="/gallery"
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted hover:text-foreground transition-colors border border-border"
+        >
+          <Icon name="heart" size={14} />
+          Client Access
+        </Link>
+
         {hasRole(['admin', 'photographer']) && (
           <Link
             href="/"
