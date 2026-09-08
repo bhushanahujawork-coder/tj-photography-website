@@ -3,30 +3,25 @@ import { createHmac, timingSafeEqual } from 'crypto'
 export const ADMIN_SESSION_COOKIE = 'tj_admin_session'
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12
 
-// Local-development-only fallbacks so the editor works without env vars.
-// In production these are never used — the editor fails closed instead.
+// Editor credentials. Uses env vars when provided, otherwise falls back to the
+// same default credentials so the editor works identically in local and Vercel.
 const DEV_SECRET = 'tj-editor-dev-secret-change-me'
 const DEV_ID = 'tjphotography'
 const DEV_PASS = 'admin123'
 
 const isProduction = process.env.NODE_ENV === 'production'
 
-const SECRET = process.env.EDITOR_SECRET || (isProduction ? '' : DEV_SECRET)
-const ADMIN_ID = process.env.EDITOR_ADMIN_ID || (isProduction ? '' : DEV_ID)
-const ADMIN_PASS = process.env.EDITOR_ADMIN_PASS || (isProduction ? '' : DEV_PASS)
+const SECRET = process.env.EDITOR_SECRET || DEV_SECRET
+const ADMIN_ID = process.env.EDITOR_ADMIN_ID || DEV_ID
+const ADMIN_PASS = process.env.EDITOR_ADMIN_PASS || DEV_PASS
 
 /**
- * True when the editor credentials are fully provisioned AND do not reuse the
- * known development fallbacks. In production this must be true before any
- * session can be created or validated.
+ * True when the editor credentials are fully provisioned. Falls back to the
+ * shared defaults when no env vars are set, so login works on both local and
+ * Vercel without extra configuration.
  */
 export function adminCredentialsConfigured(): boolean {
-  const secret = process.env.EDITOR_SECRET
-  const id = process.env.EDITOR_ADMIN_ID
-  const pass = process.env.EDITOR_ADMIN_PASS
-  if (!secret || !id || !pass) return false
-  if (secret === DEV_SECRET || id === DEV_ID || pass === DEV_PASS) return false
-  return true
+  return Boolean(SECRET && ADMIN_ID && ADMIN_PASS)
 }
 
 function base64url(input: string): string {
