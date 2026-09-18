@@ -16,15 +16,32 @@ class BrandingSettingsRequest(BaseModel):
 
 
 class GallerySettingsRequest(BaseModel):
-    visibility: Optional[str] = Field(default="private", description="Default gallery visibility")
+    visibility: Optional[str] = Field(default=None, description="Default gallery visibility")
     download_enabled: Optional[bool] = Field(default=True, description="Allow downloads")
     share_enabled: Optional[bool] = Field(default=True, description="Allow sharing")
     screenshot_protection: Optional[bool] = Field(default=False, description="Enable screenshot protection")
     anonymous_viewing: Optional[bool] = Field(default=False, description="Allow anonymous viewing")
     watermark_enabled: Optional[bool] = Field(default=False, description="Enable watermark on photos")
     pin_protection: Optional[bool] = Field(default=False, description="Enable PIN protection")
+    pin_code: Optional[str] = Field(default=None, description="PIN required to view the gallery")
 
     model_config = {"from_attributes": True}
+
+
+class GroupSettingsRequest(BaseModel):
+    name: Optional[str] = Field(default=None, description="Group display name")
+    icon_url: Optional[str] = Field(default=None, description="Group icon URL")
+    welcome_message: Optional[str] = Field(default=None, description="Welcome message shown to guests")
+    hide_deleted: Optional[bool] = Field(default=True, description="Hide deleted photos from guests")
+    liveness_enabled: Optional[bool] = Field(default=False, description="Require selfie liveness for guest access")
+    anonymous_viewing: Optional[bool] = Field(default=True, description="Allow anonymous viewing")
+    uploads_enabled: Optional[bool] = Field(default=False, description="Allow guests to upload photos")
+
+    model_config = {"from_attributes": True}
+
+
+class GroupSettingsResponse(GroupSettingsRequest):
+    pass
 
 
 class DownloadSettingsRequest(BaseModel):

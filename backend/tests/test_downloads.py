@@ -15,6 +15,7 @@ async def wedding_id(client: AsyncClient, admin_token) -> str:
             "wedding_name": "Download Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location, Jamnagar",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -101,7 +102,7 @@ async def test_create_share_link(client: AsyncClient, test_users, admin_token, w
     headers = {"Authorization": f"Bearer {admin_token}"}
     response = await client.post(
         f"/api/v1/weddings/{wedding_id}/share-links",
-        json={"role": "client", "download_enabled": True},
+        json={"wedding_id": wedding_id, "role": "client", "download_enabled": True},
         headers=headers,
     )
     assert response.status_code == 201
@@ -126,7 +127,7 @@ async def test_delete_share_link(client: AsyncClient, test_users, admin_token, w
     headers = {"Authorization": f"Bearer {admin_token}"}
     create_resp = await client.post(
         f"/api/v1/weddings/{wedding_id}/share-links",
-        json={"role": "guest"},
+        json={"wedding_id": wedding_id, "role": "guest"},
         headers=headers,
     )
     link_id = create_resp.json()["id"]
@@ -140,7 +141,7 @@ async def test_access_share_link(client: AsyncClient, test_users, admin_token, w
     headers = {"Authorization": f"Bearer {admin_token}"}
     create_resp = await client.post(
         f"/api/v1/weddings/{wedding_id}/share-links",
-        json={"role": "guest"},
+        json={"wedding_id": wedding_id, "role": "guest"},
         headers=headers,
     )
     code = create_resp.json()["code"]

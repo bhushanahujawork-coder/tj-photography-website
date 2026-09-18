@@ -13,6 +13,7 @@ async def wedding_id(client: AsyncClient, admin_token) -> str:
             "wedding_name": "Upload Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location, Jamnagar",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -69,7 +70,7 @@ async def test_complete_upload_not_found(client: AsyncClient, test_users, admin_
     headers = {"Authorization": f"Bearer {admin_token}"}
     response = await client.post(
         "/api/v1/upload/nonexistent/complete",
-        json={"file_id": "f1", "status": "completed"},
+        json={"upload_id": "nonexistent", "file_id": "f1", "status": "completed"},
         headers=headers,
     )
     assert response.status_code == 404

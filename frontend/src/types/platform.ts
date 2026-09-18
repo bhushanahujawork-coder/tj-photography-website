@@ -87,6 +87,7 @@ export interface Album {
   photoCount: number
   sortOrder: number
   createdAt: string
+  downloadEnabled?: boolean
 }
 
 export interface Folder {

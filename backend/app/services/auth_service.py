@@ -1,4 +1,8 @@
+import hashlib
 import logging
+import re
+import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,9 +18,13 @@ from app.core.security import (
     validate_password_strength,
     verify_password,
 )
-from app.models.base import UserRole
+from app.models.base import ParticipantStatus, UserRole, WeddingRole
+from app.repositories.otp_code_repository import OtpCodeRepository
+from app.repositories.participant_repository import ParticipantRepository
 from app.repositories.session_repository import SessionRepository
+from app.repositories.share_link_repository import ShareLinkRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.wedding_repository import WeddingRepository
 from app.schemas.auth import GoogleAuthResponse, LoginResponse, RefreshTokenResponse
 from app.schemas.common import SuccessResponse
 from app.schemas.user import UserResponse
@@ -26,8 +34,10 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(self, db: AsyncSession):
+        self.db = db
         self.user_repo = UserRepository(db)
         self.session_repo = SessionRepository(db)
+        self.otp_repo = OtpCodeRepository(db)
 
     async def register(self, data) -> UserResponse:
         existing = await self.user_repo.get_by_email(data.email)
@@ -68,20 +78,166 @@ class AuthService:
 
         return await self._create_session(user)
 
+    @staticmethod
+    def _hash_otp(otp: str) -> str:
+        return hashlib.sha256(f"{otp}::{settings.SECRET_KEY}".encode()).hexdigest()
+
     async def send_otp(self, data) -> SuccessResponse:
+        phone = data.phone
+        email = str(data.email) if data.email else None
+        if not phone and not email:
+            raise ValidationError(message="Phone or email is required")
+        if phone and email:
+            raise ValidationError(message="Provide either phone or email, not both")
+
+        await self.otp_repo.invalidate_for_identifier(phone=phone, email=email)
         otp = generate_otp()
-        logger.info("OTP for %s: %s", data.email or data.phone, otp)
+        await self.otp_repo.create(
+            phone=phone,
+            email=email,
+            code_hash=self._hash_otp(otp),
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(minutes=settings.OTP_EXPIRE_MINUTES),
+            used=False,
+        )
+        logger.info("OTP for %s: %s", email or phone, otp)
         return SuccessResponse(message="OTP sent successfully")
 
     async def verify_otp(self, data) -> LoginResponse:
-        user = await self.user_repo.get_by_email(data.email)
+        phone = data.phone
+        email = str(data.email) if data.email else None
+        if not phone and not email:
+            raise ValidationError(message="Phone or email is required")
+
+        code_row = await self.otp_repo.get_latest_valid(phone=phone, email=email)
+        if not code_row:
+            raise UnauthorizedError(message="No pending OTP found. Request a new code.")
+
+        if code_row.expires_at <= datetime.now(timezone.utc):
+            raise UnauthorizedError(message="OTP has expired. Request a new code.")
+
+        if not secrets.compare_digest(code_row.code_hash, self._hash_otp(data.otp_code)):
+            raise UnauthorizedError(message="Invalid OTP code")
+
+        code_row.used = True
+        code_row.consumed_at = datetime.now(timezone.utc)
+        await self.otp_repo.session.flush()
+
+        user = (
+            await self.user_repo.get_by_phone(phone)
+            if phone
+            else await self.user_repo.get_by_email(email)
+        )
         if not user:
-            user = await self.user_repo.get_by_phone(data.phone) if data.phone else None
-        if not user:
-            raise NotFoundError(message="User not found")
+            user = await self._provision_guest(data, phone, email)
+
+        if data.share_code:
+            await self._link_share_participant(user, data.share_code)
+        else:
+            await self._link_participants_by_phone(user)
 
         logger.info("OTP verified for user %s", user.id)
         return await self._create_session(user)
+
+    async def _link_participants_by_phone(self, user) -> None:
+        """Claim participant invitation rows that already carry this phone.
+
+        Used when a client signs in from the navbar (no share code): any
+        wedding TJ pre-invited this phone to becomes an accepted participant,
+        which lets the client dashboard list those galleries.
+        """
+        if not user.phone:
+            return
+        rows = await ParticipantRepository(self.db).get_unclaimed_by_phone(user.phone)
+        if not rows:
+            return
+        now = datetime.now(timezone.utc)
+        participant_repo = ParticipantRepository(self.db)
+        for row in rows:
+            await participant_repo.update(
+                row.id,
+                user_id=user.id,
+                status=ParticipantStatus.ACCEPTED.value,
+                accepted_at=now,
+            )
+
+    async def _provision_guest(self, data, phone: str | None, email: str | None):
+        """Create (or find) a guest user record from an OTP verification.
+
+        Guests get a digest-verified account and a synthetic unique email when
+        they sign in with only a phone number. They cannot ever sign in with a
+        password — password_hash is a random uuid.
+        """
+        digits = re.sub(r"\D", "", phone or "")
+        if email:
+            guest_email = email
+        else:
+            guest_email = f"guest_{digits or uuid.uuid4().hex[:8]}@guest.tjphotography.in"
+
+        existing = await self.user_repo.get_by_email(guest_email)
+        if existing:
+            guest_email = f"guest_{uuid.uuid4().hex[:8]}@guest.tjphotography.in"
+
+        name = (data.name or "Wedding Guest").strip() or "Wedding Guest"
+        return await self.user_repo.create(
+            email=guest_email,
+            phone=phone,
+            password_hash=hash_password(uuid.uuid4().hex),
+            name=name[:255],
+            role=UserRole.GUEST.value,
+            is_active=True,
+            is_verified=True,
+        )
+
+    async def _link_share_participant(self, user, share_code: str) -> None:
+        """Attach a verified user as an accepted guest participant of the
+        wedding behind a share code (when the code is valid and active)."""
+        link = await ShareLinkRepository(self.db).get_by_code(share_code)
+        if not link:
+            logger.warning("share_code %r not found during guest login", share_code)
+            return
+
+        wedding = await WeddingRepository(self.db).get(link.wedding_id)
+        if not wedding:
+            return
+
+        participant_repo = ParticipantRepository(self.db)
+        now = datetime.now(timezone.utc)
+        existing = await participant_repo.get_by_wedding_user(link.wedding_id, user.id)
+        if existing:
+            if existing.status != ParticipantStatus.ACCEPTED.value:
+                await participant_repo.update(
+                    existing.id,
+                    status=ParticipantStatus.ACCEPTED.value,
+                    accepted_at=now,
+                    user_id=user.id,
+                )
+            return
+
+        by_contact = await participant_repo.get_by_wedding_contact(
+            link.wedding_id, user.phone, user.email,
+        )
+        if by_contact:
+            await participant_repo.update(
+                by_contact.id,
+                user_id=user.id,
+                status=ParticipantStatus.ACCEPTED.value,
+                accepted_at=now,
+            )
+            return
+
+        await participant_repo.create(
+            wedding_id=link.wedding_id,
+            user_id=user.id,
+            name=user.name,
+            email=user.email,
+            phone=user.phone,
+            role=WeddingRole.GUEST.value,
+            status=ParticipantStatus.ACCEPTED.value,
+            invited_at=now,
+            accepted_at=now,
+            invited_by=wedding.photographer_id,
+        )
 
     async def refresh_token(self, data) -> RefreshTokenResponse:
         try:

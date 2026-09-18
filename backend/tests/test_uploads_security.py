@@ -272,7 +272,7 @@ async def test_media_content_requires_auth(client: AsyncClient, test_users, admi
     photo_id = upload_resp.json()["id"]
 
     resp = await client.get(f"/api/v1/media/photos/{photo_id}/content?size=medium")
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 @pytest.mark.asyncio

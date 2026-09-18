@@ -1,15 +1,17 @@
 import logging
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ForbiddenError, NotFoundError
 from app.core.media import media_url
+from app.models.photo_reaction import PhotoReaction
 from app.repositories.album_repository import AlbumRepository
 from app.repositories.folder_repository import FolderRepository
 from app.repositories.photo_repository import PhotoRepository
 from app.repositories.wedding_repository import WeddingRepository
 from app.schemas.common import PaginatedResponse, SuccessResponse
-from app.schemas.photo import PhotoExifResponse, PhotoFilterParams, PhotoResponse
+from app.schemas.photo import PhotoExifResponse, PhotoFilterParams, PhotoReactionResponse, PhotoResponse
 from app.services.permission_service import PermissionService
 
 logger = logging.getLogger(__name__)
@@ -43,7 +45,51 @@ class PhotoService:
             raise NotFoundError(message="Photo not found")
         return role
 
-    def _photo_to_response(self, photo) -> PhotoResponse:
+    async def _reaction_stats(self, photo_id: str, current_user: dict) -> tuple[int, bool]:
+        user_id = current_user.get("sub")
+        count_stmt = (
+            select(func.count(PhotoReaction.id))
+            .where(PhotoReaction.photo_id == photo_id)
+        )
+        count = (await self.db.execute(count_stmt)).scalar() or 0
+        reacted = False
+        if user_id:
+            mine = await self.db.execute(
+                select(PhotoReaction.id).where(
+                    PhotoReaction.photo_id == photo_id,
+                    PhotoReaction.user_id == user_id,
+                )
+            )
+            reacted = mine.scalar_one_or_none() is not None
+        return int(count), reacted
+
+    async def _reaction_stats_map(
+        self, photo_ids: list[str], current_user: dict,
+    ) -> dict[str, tuple[int, bool]]:
+        """Bulk reaction stats for a page of photos: {photo_id: (count, mine)}."""
+        if not photo_ids:
+            return {}
+        user_id = current_user.get("sub")
+
+        rows = await self.db.execute(
+            select(
+                PhotoReaction.photo_id,
+                PhotoReaction.user_id,
+            ).where(PhotoReaction.photo_id.in_(photo_ids))
+        )
+        counts: dict[str, int] = {pid: 0 for pid in photo_ids}
+        mine_for: dict[str, bool] = {}
+        for photo_id, reactor_id in rows.all():
+            counts[photo_id] = counts.get(photo_id, 0) + 1
+            if user_id and reactor_id == user_id:
+                mine_for[photo_id] = True
+
+        return {
+            pid: (counts.get(pid, 0), mine_for.get(pid, False))
+            for pid in photo_ids
+        }
+
+    def _photo_to_response(self, photo, reaction_count: int = 0, reacted_by_me: bool = False) -> PhotoResponse:
         return PhotoResponse(
             id=photo.id,
             wedding_id=photo.wedding_id,
@@ -69,6 +115,10 @@ class PhotoService:
             favorite=photo.favorite,
             is_highlight=photo.is_highlight,
             is_hidden=photo.is_hidden,
+            download_enabled=photo.download_enabled,
+            uploaded_by=photo.uploaded_by,
+            reaction_count=reaction_count,
+            reacted_by_me=reacted_by_me,
             created_at=photo.created_at,
         )
 
@@ -79,7 +129,7 @@ class PhotoService:
         visitors can stream bytes without any static storage mount."""
         return f"/api/v1/media/share/{code}/photos/{photo_id}/content?size={size}"
 
-    def _share_photo_to_response(self, photo, code: str) -> PhotoResponse:
+    def _share_photo_to_response(self, photo, code: str, reaction_count: int = 0, reacted_by_me: bool = False) -> PhotoResponse:
         return PhotoResponse(
             id=photo.id,
             wedding_id=photo.wedding_id,
@@ -111,10 +161,17 @@ class PhotoService:
             favorite=photo.favorite,
             is_highlight=photo.is_highlight,
             is_hidden=photo.is_hidden,
+            download_enabled=photo.download_enabled,
+            uploaded_by=photo.uploaded_by,
+            reaction_count=reaction_count,
+            reacted_by_me=reacted_by_me,
             created_at=photo.created_at,
         )
 
-    async def list_share_photos(self, code: str, filters: PhotoFilterParams) -> PaginatedResponse[PhotoResponse]:
+    async def list_share_photos(
+        self, code: str, filters: PhotoFilterParams,
+        current_user: dict | None = None, gallery_pin: str | None = None,
+    ) -> PaginatedResponse[PhotoResponse]:
         """Public share-scoped photo listing.
 
         Requires an active share link whose role has the `view` permission.
@@ -124,7 +181,10 @@ class PhotoService:
         """
         from app.services.download_service import DownloadService
 
-        link = await DownloadService(self.db).get_active_share_link(code)
+        svc = DownloadService(self.db)
+        link = await svc.get_active_share_link(code)
+        await svc.enforce_share_access(link, current_user=current_user, gallery_pin=gallery_pin)
+
         allowed = await PermissionService(self.db).has_permission(link.wedding_id, link.role, "view")
         if not allowed:
             raise ForbiddenError(message=f"Permission 'view' denied for role '{link.role}'")
@@ -146,9 +206,17 @@ class PhotoService:
             skip=skip,
             limit=filters.page_size,
         )
+        stats = await self._reaction_stats_map([p.id for p in items], current_user or {})
         pages = max(0, (total + filters.page_size - 1) // filters.page_size)
         return PaginatedResponse[PhotoResponse](
-            items=[self._share_photo_to_response(p, code) for p in items],
+            items=[
+                self._share_photo_to_response(
+                    p, code,
+                    reaction_count=stats[p.id][0] if p.id in stats else 0,
+                    reacted_by_me=stats[p.id][1] if p.id in stats else False,
+                )
+                for p in items
+            ],
             total=total,
             page=filters.page,
             page_size=filters.page_size,
@@ -186,7 +254,8 @@ class PhotoService:
         if not photo or photo.is_deleted:
             raise NotFoundError(message="Photo not found")
         await self._require_photo_access(photo, current_user, "view")
-        return self._photo_to_response(photo)
+        count, reacted = await self._reaction_stats(photo_id, current_user)
+        return self._photo_to_response(photo, count, reacted)
 
     async def list_photos(self, filters, current_user: dict) -> PaginatedResponse[PhotoResponse]:
         from app.core.dependencies import resolve_wedding_role
@@ -220,6 +289,7 @@ class PhotoService:
             favorite=filters.favorite,
             is_highlight=filters.is_highlight,
             is_hidden=filters.is_hidden,
+            uploaded_by=filters.uploaded_by,
             is_deleted=True if filters.include_deleted else None,
             date_from=filters.date_from,
             date_to=filters.date_to,
@@ -228,9 +298,17 @@ class PhotoService:
             skip=skip,
             limit=filters.page_size,
         )
+        stats = await self._reaction_stats_map([p.id for p in items], current_user)
         pages = max(0, (total + filters.page_size - 1) // filters.page_size)
         return PaginatedResponse[PhotoResponse](
-            items=[self._photo_to_response(p) for p in items],
+            items=[
+                self._photo_to_response(
+                    p,
+                    reaction_count=stats[p.id][0] if p.id in stats else 0,
+                    reacted_by_me=stats[p.id][1] if p.id in stats else False,
+                )
+                for p in items
+            ],
             total=total,
             page=filters.page,
             page_size=filters.page_size,
@@ -250,10 +328,12 @@ class PhotoService:
             favorite=data.favorite,
             is_highlight=data.is_highlight,
             is_hidden=data.is_hidden,
+            download_enabled=data.download_enabled,
             alt_text=data.alt_text,
         )
         logger.info("Photo updated: %s", photo_id)
-        return self._photo_to_response(updated)
+        count, reacted = await self._reaction_stats(photo_id, current_user)
+        return self._photo_to_response(updated, count, reacted)
 
     async def soft_delete(self, photo_id: str, current_user: dict) -> None:
         photo = await self.photo_repo.get(photo_id)
@@ -280,6 +360,7 @@ class PhotoService:
                 favorite=data.updates.favorite,
                 is_highlight=data.updates.is_highlight,
                 is_hidden=data.updates.is_hidden,
+                download_enabled=data.updates.download_enabled,
                 alt_text=data.updates.alt_text,
             )
             results.append(self._photo_to_response(updated))
@@ -338,6 +419,34 @@ class PhotoService:
         logger.info("Batch restored %d photos", len(results))
         return results
 
+    async def set_reaction(
+        self, photo_id: str, reacted: bool, current_user: dict,
+    ) -> PhotoReactionResponse:
+        photo = await self.photo_repo.get(photo_id)
+        if not photo or photo.is_deleted:
+            raise NotFoundError(message="Photo not found")
+        await self._require_photo_access(photo, current_user, "view")
+
+        user_id = current_user.get("sub")
+        from app.repositories.photo_reaction_repository import PhotoReactionRepository
+
+        reaction_repo = PhotoReactionRepository(self.db)
+        existing = await reaction_repo.get_by_photo_user(photo_id, user_id)
+
+        if reacted and not existing:
+            await reaction_repo.create(photo_id=photo_id, user_id=user_id)
+        elif not reacted and existing:
+            await reaction_repo.delete(existing.id)
+
+        count, mine = await self._reaction_stats(photo_id, current_user)
+        logger.info("Photo %s reaction set to %s (count=%d)", photo_id, reacted, count)
+        return PhotoReactionResponse(
+            photo_id=photo_id,
+            reacted=mine,
+            reaction_count=count,
+            reacted_by_me=mine,
+        )
+
     async def toggle_favorite(self, photo_id: str, current_user: dict) -> PhotoResponse:
         photo = await self.photo_repo.get(photo_id)
         if not photo or photo.is_deleted:
@@ -348,7 +457,8 @@ class PhotoService:
             photo_id, favorite=not photo.favorite,
         )
         logger.info("Photo %s favorite toggled: %s", photo_id, updated.favorite)
-        return self._photo_to_response(updated)
+        count, reacted = await self._reaction_stats(photo_id, current_user)
+        return self._photo_to_response(updated, count, reacted)
 
     async def download_photos_batch(self, photo_ids: list[str], current_user: dict) -> tuple[bytes, str]:
         import io

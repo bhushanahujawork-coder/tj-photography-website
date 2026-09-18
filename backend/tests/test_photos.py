@@ -20,6 +20,7 @@ async def wedding_id(client: AsyncClient, admin_token) -> str:
             "wedding_name": "Photo Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location, Jamnagar",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -32,7 +33,8 @@ async def test_list_photos(client: AsyncClient, test_users, admin_token, wedding
     headers = {"Authorization": f"Bearer {admin_token}"}
     response = await client.get(f"/api/v1/weddings/{wedding_id}/photos", headers=headers)
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    data = response.json()
+    assert isinstance(data["items"], list)
 
 
 @pytest.mark.asyncio

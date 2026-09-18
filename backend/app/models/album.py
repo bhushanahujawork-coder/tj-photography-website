@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, Column, ForeignKey, Index, Integer, String, Text, true
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -15,6 +15,7 @@ class Album(BaseModel):
     description = Column(Text, nullable=True)
     cover_image_url = Column(String(512), nullable=True)
     photo_count = Column(Integer, default=0, nullable=False)
+    download_enabled = Column(Boolean, default=True, server_default=true(), nullable=False)
     sort_order = Column(Integer, default=0, nullable=False)
 
     wedding = relationship("Wedding", back_populates="albums")

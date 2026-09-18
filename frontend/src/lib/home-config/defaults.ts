@@ -24,7 +24,7 @@ export const HOME_CONFIG_DEFAULTS: HomeConfig = {
       offset: 253,
       spacing: 32,
       links: [
-        { label: 'Weddings', href: '#weddings' },
+        { label: 'Quick Portfolio', href: '/portfolio' },
         { label: 'Films', href: '/films' },
         { label: 'About Us', href: '/about' },
         { label: 'Contact Us', href: '#contact' },

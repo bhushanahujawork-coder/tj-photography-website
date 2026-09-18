@@ -20,6 +20,7 @@ class PhotoRepository(BaseRepository[Photo]):
         favorite: Optional[bool] = None,
         is_highlight: Optional[bool] = None,
         is_hidden: Optional[bool] = None,
+        uploaded_by: Optional[str] = None,
         is_deleted: Optional[bool] = None,
         date_from: Optional[datetime] = None,
         date_to: Optional[datetime] = None,
@@ -39,6 +40,8 @@ class PhotoRepository(BaseRepository[Photo]):
             conditions.append(Photo.album_id == album_id)
         if folder_id is not None:
             conditions.append(Photo.folder_id == folder_id)
+        if uploaded_by is not None:
+            conditions.append(Photo.uploaded_by == uploaded_by)
         if search:
             conditions.append(
                 Photo.filename.ilike(f"%{search}%")

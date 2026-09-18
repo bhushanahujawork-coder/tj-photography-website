@@ -14,7 +14,7 @@ import { AuthGuard } from '@/components/platform/auth-guard'
 import { Breadcrumb } from '@/components/platform/breadcrumb'
 import { apiFetch } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import type { Folder, GalleryVisibility } from '@/types/platform'
+import type { Folder, GalleryVisibility, Wedding } from '@/types/platform'
 
 const visibilityOptions = [
   { label: 'Public', value: 'public' },
@@ -31,30 +31,58 @@ const visibilityBadgeVariant: Record<string, 'success' | 'default' | 'warning'> 
 export default function FoldersPage() {
   const { toast } = useToast()
   const [folders, setFolders] = useState<Folder[]>([])
+  const [weddings, setWeddings] = useState<Wedding[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null)
   const [folderName, setFolderName] = useState('')
   const [folderVisibility, setFolderVisibility] = useState<GalleryVisibility>('private')
+  const [folderWeddingId, setFolderWeddingId] = useState('')
 
   useEffect(() => {
-    apiFetch<{ weddings: { id: string }[] }>('/api/v1/weddings?page_size=100')
+    apiFetch<{ items: { id: string; wedding_name: string }[] }>('/api/v1/weddings/?page_size=100')
       .then(async res => {
-        const weddings = res.weddings ?? (Array.isArray(res) ? res : [])
-        const folderPromises = (weddings as { id: string }[]).map(w =>
-          apiFetch<Folder[]>(`/api/v1/weddings/${w.id}/folders`).catch(() => [] as Folder[])
+        const items = res.items ?? (Array.isArray(res) ? (res as { id: string }[]) : [])
+        setWeddings(items as unknown as Wedding[])
+        const folderPromises = items.map(w =>
+          apiFetch<Folder[]>(`/api/v1/weddings/${w.id}/folders/`).catch(() => [] as Folder[])
         )
         const results = await Promise.all(folderPromises)
         setFolders(results.flat())
       })
-      .catch(console.error)
+      .catch(() => {
+        setWeddings([])
+        setFolders([])
+      })
       .finally(() => setLoading(false))
   }, [])
+
+  function mapFolder(f: {
+    id: string
+    wedding_id: string
+    name: string
+    photo_count?: number
+    sort_order?: number
+    visibility: string
+    created_at: string
+  }): Folder {
+    return {
+      id: f.id,
+      weddingId: f.wedding_id,
+      name: f.name,
+      photoCount: f.photo_count || 0,
+      sortOrder: f.sort_order || 0,
+      visibility: f.visibility as GalleryVisibility,
+      createdAt: f.created_at,
+    }
+  }
 
   const openCreate = () => {
     setEditingFolder(null)
     setFolderName('')
     setFolderVisibility('private')
+    setFolderWeddingId(weddings[0]?.id || '')
     setModalOpen(true)
   }
 
@@ -62,41 +90,69 @@ export default function FoldersPage() {
     setEditingFolder(folder)
     setFolderName(folder.name)
     setFolderVisibility(folder.visibility)
+    setFolderWeddingId(folder.weddingId)
     setModalOpen(true)
   }
 
-  const handleSave = () => {
-    if (!folderName.trim()) return
-
-    if (editingFolder) {
-      setFolders(prev =>
-        prev.map(f =>
-          f.id === editingFolder.id
-            ? { ...f, name: folderName.trim(), visibility: folderVisibility }
-            : f
-        )
-      )
-      toast({ title: 'Folder updated', variant: 'success' })
-    } else {
-      const newFolder: Folder = {
-        id: `folder-${Date.now()}`,
-        weddingId: 'wed-1',
+  const handleSave = async () => {
+    if (!folderName.trim() || !folderWeddingId) return
+    setSaving(true)
+    try {
+      const body = JSON.stringify({
         name: folderName.trim(),
-        photoCount: 0,
-        sortOrder: folders.length + 1,
         visibility: folderVisibility,
-        createdAt: new Date().toISOString(),
+      })
+      if (editingFolder) {
+        await apiFetch(
+          `/api/v1/weddings/${editingFolder.weddingId}/folders/${editingFolder.id}/`,
+          { method: 'PUT', body }
+        )
+        setFolders(prev =>
+          prev.map(f =>
+            f.id === editingFolder.id
+              ? { ...f, name: folderName.trim(), visibility: folderVisibility }
+              : f
+          )
+        )
+        toast({ title: 'Folder updated', variant: 'success' })
+      } else {
+        const created = await apiFetch<{
+          id: string
+          wedding_id: string
+          name: string
+          photo_count: number
+          sort_order: number
+          visibility: string
+          created_at: string
+        }>(`/api/v1/weddings/${folderWeddingId}/folders/`, {
+          method: 'POST',
+          body: JSON.stringify({
+            name: folderName.trim(),
+            visibility: folderVisibility,
+            wedding_id: folderWeddingId,
+          }),
+        })
+        setFolders(prev => [...prev, mapFolder(created)])
+        toast({ title: 'Folder created', variant: 'success' })
       }
-      setFolders(prev => [...prev, newFolder])
-      toast({ title: 'Folder created', variant: 'success' })
+      setModalOpen(false)
+    } catch {
+      toast({ title: editingFolder ? 'Failed to update folder' : 'Failed to create folder', variant: 'error' })
+    } finally {
+      setSaving(false)
     }
-
-    setModalOpen(false)
   }
 
-  const handleDelete = (id: string) => {
-    setFolders(prev => prev.filter(f => f.id !== id))
-    toast({ title: 'Folder deleted', variant: 'success' })
+  const handleDelete = async (folder: Folder) => {
+    try {
+      await apiFetch(`/api/v1/weddings/${folder.weddingId}/folders/${folder.id}/`, {
+        method: 'DELETE',
+      })
+      setFolders(prev => prev.filter(f => f.id !== folder.id))
+      toast({ title: 'Folder deleted', variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to delete folder', variant: 'error' })
+    }
   }
 
   return (
@@ -178,7 +234,7 @@ export default function FoldersPage() {
                         variant="ghost"
                         size="sm"
                         className="flex-shrink-0 text-red-400 hover:text-red-300"
-                        onClick={() => handleDelete(folder.id)}
+                        onClick={() => handleDelete(folder)}
                       >
                         <Icon name="trash" size={14} />
                       </Button>
@@ -207,6 +263,16 @@ export default function FoldersPage() {
             onChange={e => setFolderName(e.target.value)}
           />
           <Select
+            label="Wedding"
+            options={weddings.map(w => ({
+              label: w.weddingName || w.id,
+              value: w.id,
+            }))}
+            value={folderWeddingId}
+            onChange={e => setFolderWeddingId(e.target.value)}
+            disabled={!!editingFolder}
+          />
+          <Select
             label="Visibility"
             options={visibilityOptions}
             value={folderVisibility}
@@ -214,7 +280,7 @@ export default function FoldersPage() {
           />
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!folderName.trim()}>
+            <Button onClick={handleSave} disabled={!folderName.trim() || !folderWeddingId} loading={saving}>
               {editingFolder ? 'Save' : 'Create'}
             </Button>
           </div>

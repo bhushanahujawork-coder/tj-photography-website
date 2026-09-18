@@ -5,9 +5,25 @@ import { motion } from 'framer-motion'
 interface SectionHeadingProps {
   title: string
   description?: string
+  animate?: boolean
 }
 
-export default function SectionHeading({ title, description }: SectionHeadingProps) {
+export default function SectionHeading({ title, description, animate = true }: SectionHeadingProps) {
+  if (!animate) {
+    return (
+      <div className="text-center mb-8 md:mb-10">
+        <h2 className="font-serif text-2xl md:text-4xl lg:text-5xl 2xl:text-6xl text-foreground tracking-wide">
+          {title}
+        </h2>
+        {description && (
+          <p className="text-muted text-sm md:text-base xl:text-lg max-w-xl 2xl:max-w-2xl mx-auto mt-4 font-light leading-relaxed">
+            {description}
+          </p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="text-center mb-8 md:mb-10">
       <motion.h2

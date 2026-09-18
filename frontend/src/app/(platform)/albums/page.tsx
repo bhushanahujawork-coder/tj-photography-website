@@ -3,18 +3,18 @@
 import { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Icon } from '@/lib/icons'
-import { Card, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Dropdown } from '@/components/ui/dropdown'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { AuthGuard } from '@/components/platform/auth-guard'
 import { Breadcrumb } from '@/components/platform/breadcrumb'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, mediaUrl } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import type { Album, Photo, Wedding } from '@/types/platform'
 
@@ -35,6 +35,11 @@ export default function AlbumsPage() {
   const [formName, setFormName] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formWeddingId, setFormWeddingId] = useState('')
+  const [formCover, setFormCover] = useState('')
+  const [formDownloadEnabled, setFormDownloadEnabled] = useState(true)
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false)
+  const [coverPhotos, setCoverPhotos] = useState<Photo[]>([])
+  const [coverLoading, setCoverLoading] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -80,6 +85,8 @@ export default function AlbumsPage() {
     setFormName('')
     setFormDescription('')
     setFormWeddingId(weddings[0]?.id || '')
+    setFormCover('')
+    setFormDownloadEnabled(true)
     setAlbumModalOpen(true)
   }
 
@@ -88,7 +95,46 @@ export default function AlbumsPage() {
     setFormName(album.name)
     setFormDescription(album.description || '')
     setFormWeddingId(album.weddingId)
+    setFormCover(album.coverImageUrl || '')
+    setFormDownloadEnabled(album.downloadEnabled ?? true)
     setAlbumModalOpen(true)
+  }
+
+  async function openCoverPicker() {
+    if (!formWeddingId || coverPickerOpen) return
+    setCoverPickerOpen(true)
+    setCoverLoading(true)
+    try {
+      const res = await apiFetch<{ items?: Array<Record<string, unknown>> }>(
+        `/api/v1/weddings/${formWeddingId}/photos?page_size=200`
+      )
+      const items = (res?.items || []) as Array<{
+        id: string
+        medium_url?: string | null
+        thumbnail_url?: string | null
+        original_url?: string | null
+        alt_text?: string | null
+        filename?: string
+        width?: number | null
+        height?: number | null
+        created_at?: string
+      }>
+      setCoverPhotos(items.map(p => ({
+        id: p.id,
+        weddingId: formWeddingId,
+        src: p.medium_url || p.thumbnail_url || p.original_url || '',
+        alt: p.alt_text || p.filename || 'Photo',
+        width: p.width || 800,
+        height: p.height || 600,
+        favorite: false,
+        isHighlight: false,
+        createdAt: p.created_at || '',
+      })))
+    } catch {
+      setCoverPhotos([])
+    } finally {
+      setCoverLoading(false)
+    }
   }
 
   function openView(album: Album) {
@@ -104,49 +150,75 @@ export default function AlbumsPage() {
       .finally(() => setViewLoading(false))
   }
 
+  function mapAlbum(a: {
+    id: string
+    wedding_id: string
+    name: string
+    description?: string | null
+    cover_image_url?: string | null
+    photo_count: number
+    sort_order: number
+    download_enabled?: boolean
+    created_at: string
+  }): Album {
+    return {
+      id: a.id,
+      weddingId: a.wedding_id,
+      name: a.name,
+      description: a.description || undefined,
+      coverImageUrl: a.cover_image_url || undefined,
+      photoCount: a.photo_count,
+      sortOrder: a.sort_order,
+      downloadEnabled: a.download_enabled,
+      createdAt: a.created_at,
+    }
+  }
+
   async function getAlbumPhotos(weddingId: string, albumId: string): Promise<Photo[]> {
-    const res = await apiFetch<{
-      items?: Array<{
-        id: string
-        filename?: string
-        altText?: string
-        thumbnailUrl?: string | null
-        mediumUrl?: string | null
-        originalUrl?: string | null
-        blurHash?: string | null
-        width?: number | null
-        height?: number | null
-        createdAt?: string
-      }>
-    }>(`/api/v1/weddings/${weddingId}/photos?album_id=${albumId}&page_size=200`)
-    return (res?.items || []).map(p => ({
+    const res = await apiFetch<{ items?: Array<Record<string, unknown>> }>(
+      `/api/v1/weddings/${weddingId}/photos?album_id=${albumId}&page_size=200`
+    )
+    const items = (res?.items || []) as Array<{
+      id: string
+      filename?: string
+      alt_text?: string | null
+      thumbnail_url?: string | null
+      medium_url?: string | null
+      original_url?: string | null
+      blur_hash?: string | null
+      width?: number | null
+      height?: number | null
+      created_at?: string
+    }>
+    return items.map(p => ({
       id: p.id,
       weddingId,
-      src: p.mediumUrl || p.thumbnailUrl || p.originalUrl || '',
-      alt: p.altText || p.filename || 'Photo',
+      src: p.medium_url || p.thumbnail_url || p.original_url || '',
+      alt: p.alt_text || p.filename || 'Photo',
       width: p.width || 800,
       height: p.height || 600,
-      blurDataURL: p.blurHash || undefined,
+      blurDataURL: p.blur_hash || undefined,
       favorite: false,
       isHighlight: false,
-      createdAt: p.createdAt || '',
+      createdAt: p.created_at || '',
     }))
   }
 
   async function setCover(photo: Photo) {
-    if (!viewingAlbum) return
+    if (!viewingAlbum || !photo.src) return
     setCoverUpdating(true)
     try {
       await apiFetch(`/api/v1/weddings/${viewingAlbum.weddingId}/albums/${viewingAlbum.id}`, {
         method: 'PUT',
         body: JSON.stringify({ cover_image: photo.src }),
       })
+      const cover = photo.src
       setAlbums((prev) =>
         prev.map((a) =>
-          a.id === viewingAlbum.id ? { ...a, coverImageUrl: photo.src } : a
+          a.id === viewingAlbum.id ? { ...a, coverImageUrl: cover } : a
         )
       )
-      setViewingAlbum((prev) => (prev ? { ...prev, coverImageUrl: photo.src } : prev))
+      setViewingAlbum((prev) => (prev ? { ...prev, coverImageUrl: cover } : prev))
       toast({ title: 'Cover updated', variant: 'success' })
     } catch {
       toast({ title: 'Failed to update cover', variant: 'error' })
@@ -175,41 +247,89 @@ export default function AlbumsPage() {
     }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!viewingAlbum) return
-    setAlbums((prev) => prev.filter((a) => a.id !== viewingAlbum.id))
-    setDeleteConfirmOpen(false)
-    toast({ title: 'Album deleted', variant: 'success' })
+    try {
+      await apiFetch(`/api/v1/weddings/${viewingAlbum.weddingId}/albums/${viewingAlbum.id}`, {
+        method: 'DELETE',
+      })
+      setAlbums((prev) => prev.filter((a) => a.id !== viewingAlbum.id))
+      toast({ title: 'Album deleted', variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to delete album', variant: 'error' })
+    } finally {
+      setDeleteConfirmOpen(false)
+    }
   }
 
-  function handleSave() {
-    if (!formName.trim()) return
+  async function handleSave() {
+    if (!formName.trim() || !formWeddingId) return
 
-    if (editingAlbum) {
-      setAlbums((prev) =>
-        prev.map((a) =>
-          a.id === editingAlbum.id
-            ? { ...a, name: formName.trim(), description: formDescription.trim(), weddingId: formWeddingId }
-            : a
+    try {
+      if (editingAlbum) {
+        const updated = await apiFetch<{
+          id: string
+          name: string
+          description?: string | null
+          cover_image_url?: string | null
+        }>(`/api/v1/weddings/${editingAlbum.weddingId}/albums/${editingAlbum.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: formName.trim(),
+            description: formDescription.trim(),
+            cover_image: formCover || null,
+            download_enabled: formDownloadEnabled,
+          }),
+        })
+        setAlbums((prev) =>
+          prev.map((a) =>
+            a.id === editingAlbum.id
+              ? {
+                  ...a,
+                  name: updated.name,
+                  description: updated.description || undefined,
+                  coverImageUrl: updated.cover_image_url || undefined,
+                }
+              : a
+          )
         )
-      )
-      toast({ title: 'Album updated', variant: 'success' })
-    } else {
-      const newAlbum: Album = {
-        id: `album-${Date.now()}`,
-        weddingId: formWeddingId,
-        name: formName.trim(),
-        description: formDescription.trim() || undefined,
-        coverImageUrl: undefined,
-        photoCount: 0,
-        sortOrder: 0,
-        createdAt: new Date().toISOString(),
+        toast({ title: 'Album updated', variant: 'success' })
+      } else {
+        const created = await apiFetch<{
+          id: string
+          wedding_id: string
+          name: string
+          description?: string | null
+          cover_image_url?: string | null
+          photo_count: number
+          sort_order: number
+          created_at: string
+        }>(`/api/v1/weddings/${formWeddingId}/albums/`, {
+          method: 'POST',
+          body: JSON.stringify({
+            name: formName.trim(),
+            description: formDescription.trim(),
+            download_enabled: formDownloadEnabled,
+          }),
+        })
+        if (formCover) {
+          const withCover = await apiFetch<{
+            id: string
+            cover_image_url?: string | null
+          }>(`/api/v1/weddings/${formWeddingId}/albums/${created.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ cover_image: formCover }),
+          })
+          created.cover_image_url = withCover.cover_image_url
+        }
+        setAlbums((prev) => [...prev, mapAlbum(created)])
+        toast({ title: 'Album created', variant: 'success' })
       }
-      setAlbums((prev) => [...prev, newAlbum])
-      toast({ title: 'Album created', variant: 'success' })
+    } catch {
+      toast({ title: editingAlbum ? 'Failed to update album' : 'Failed to create album', variant: 'error' })
+    } finally {
+      setAlbumModalOpen(false)
     }
-
-    setAlbumModalOpen(false)
   }
 
   return (
@@ -268,7 +388,7 @@ export default function AlbumsPage() {
                   <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#1a1a1a] via-[#2a2015] to-[#1a1a1a]">
                     {album.coverImageUrl ? (
                       <img
-                        src={album.coverImageUrl}
+                        src={mediaUrl(album.coverImageUrl)}
                         alt={album.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
@@ -366,10 +486,86 @@ export default function AlbumsPage() {
             value={formWeddingId}
             onChange={(e) => setFormWeddingId(e.target.value)}
           />
-          <div className="rounded-lg border border-dashed border-border bg-white/5 p-6 text-center">
-            <Icon name="upload" size={20} className="mx-auto text-muted" />
-            <p className="mt-2 text-xs text-muted">Cover image upload coming soon</p>
+          <Switch
+            checked={formDownloadEnabled}
+            onChange={setFormDownloadEnabled}
+            label="Allow customers to download this album"
+          />
+          <div className="rounded-lg border border-dashed border-border bg-white/5 p-4">
+            <p className="mb-3 text-center text-xs text-muted">Album Cover</p>
+            {formCover ? (
+              <div className="relative">
+                <img
+                  src={mediaUrl(formCover)}
+                  alt="Cover"
+                  className="h-28 w-full rounded-md object-cover"
+                />
+                <button
+                  onClick={() => setFormCover('')}
+                  className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[11px] text-white"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex h-28 items-center justify-center rounded-md bg-white/[0.02]">
+                <Icon name="images" size={24} className="text-muted" />
+              </div>
+            )}
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <Button variant="outline" size="sm" onClick={openCoverPicker}>
+                <Icon name="image" size={13} />
+                Pick from photos
+              </Button>
+            </div>
           </div>
+
+          <Modal
+            open={coverPickerOpen}
+            onClose={() => setCoverPickerOpen(false)}
+            title="Choose Cover Photo"
+            description="Select a photo from the wedding gallery."
+            size="full"
+            className="max-h-[80vh] overflow-y-auto"
+          >
+            {coverLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+              </div>
+            ) : coverPhotos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Icon name="image" size={28} className="text-muted" />
+                <p className="mt-3 text-sm text-muted">No photos in this wedding yet</p>
+                <p className="mt-1 text-xs text-muted">Upload photos first, then pick a cover.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {coverPhotos.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setFormCover(p.src)
+                      setCoverPickerOpen(false)
+                    }}
+                    className="group relative aspect-[4/3] overflow-hidden rounded-lg border border-border/60 bg-white/5"
+                  >
+                    {p.src ? (
+                      <img
+                        src={mediaUrl(p.src)}
+                        alt={p.alt}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <Icon name="image" size={20} className="text-muted" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Modal>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setAlbumModalOpen(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={!formName.trim() || !formWeddingId}>
@@ -430,7 +626,7 @@ export default function AlbumsPage() {
                       }`}
                     >
                       <img
-                        src={p.src}
+                        src={mediaUrl(p.src)}
                         alt={p.alt}
                         loading="lazy"
                         className="aspect-[4/3] w-full object-cover"

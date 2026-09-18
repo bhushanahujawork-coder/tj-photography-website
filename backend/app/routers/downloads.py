@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Header, Query, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, get_db_session, require_wedding_access
+from app.core.dependencies import get_current_active_user, get_db_session, get_optional_user, require_wedding_access
 from app.schemas.common import SuccessResponse
 from app.schemas.download import (
     DownloadRequest,
     DownloadResponse,
     DownloadRecordResponse,
+    PinVerifyRequest,
+    PinVerifyResponse,
+    ShareAlbumResponse,
     ShareGalleryResponse,
     ShareLinkCreateRequest,
     ShareLinkResponse,
@@ -132,6 +135,38 @@ async def access_share_link(
 )
 async def access_share_gallery(
     code: str,
+    gallery_pin: str | None = Header(default=None, alias="X-Gallery-Pin"),
+    current_user: dict | None = Depends(get_optional_user),
     download_service: DownloadService = Depends(get_download_service),
 ) -> ShareGalleryResponse:
-    return await download_service.access_share_gallery(code)
+    return await download_service.access_share_gallery(code, current_user, gallery_pin)
+
+
+@router.get(
+    "/share/{code}/albums",
+    response_model=list[ShareAlbumResponse],
+    operation_id="share_albums_list",
+    summary="List albums for a share link (public, share-scoped)",
+)
+async def list_share_albums(
+    code: str,
+    gallery_pin: str | None = Header(default=None, alias="X-Gallery-Pin"),
+    current_user: dict | None = Depends(get_optional_user),
+    download_service: DownloadService = Depends(get_download_service),
+) -> list[ShareAlbumResponse]:
+    return await download_service.list_share_albums(code, current_user, gallery_pin)
+
+
+@router.post(
+    "/share/{code}/verify-pin",
+    response_model=PinVerifyResponse,
+    operation_id="share_pin_verify",
+    summary="Verify a gallery PIN for a share code",
+)
+async def verify_share_pin(
+    code: str,
+    request: PinVerifyRequest,
+    download_service: DownloadService = Depends(get_download_service),
+) -> PinVerifyResponse:
+    valid = await download_service.verify_share_pin(code, request.pin)
+    return PinVerifyResponse(valid=valid, code=code)

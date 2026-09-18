@@ -27,6 +27,8 @@ class OTPRequest(BaseModel):
     phone: Optional[str] = Field(default=None, description="Phone number receiving OTP")
     email: Optional[EmailStr] = Field(default=None, description="Email address receiving OTP")
     otp_code: str = Field(description="One-time password code")
+    name: Optional[str] = Field(default=None, description="Name used when provisioning a new guest account")
+    share_code: Optional[str] = Field(default=None, description="Share code to auto-join as an accepted guest participant")
 
     model_config = {"from_attributes": True}
 

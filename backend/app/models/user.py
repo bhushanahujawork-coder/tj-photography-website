@@ -41,6 +41,11 @@ class User(BaseModel):
         foreign_keys="Photo.uploaded_by",
         cascade="all, delete-orphan",
     )
+    photo_reactions = relationship(
+        "PhotoReaction",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     activities = relationship(
         "Activity",
         back_populates="user",

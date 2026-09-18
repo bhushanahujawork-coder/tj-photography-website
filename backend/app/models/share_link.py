@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -14,6 +14,7 @@ class ShareLink(BaseModel):
     code = Column(String(50), unique=True, index=True, nullable=False)
     role = Column(String(20), default=WeddingRole.GUEST.value, nullable=False)
     download_enabled = Column(Boolean, default=True, nullable=False)
+    pin_code = Column(String(255), nullable=True, default=None)
     expires_at = Column(DateTime(timezone=True), nullable=True)
     access_count = Column(Integer, default=0, nullable=False)
 

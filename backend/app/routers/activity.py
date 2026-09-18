@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_active_user, get_db_session
 from app.schemas.activity import ActivityFilterParams, ActivityResponse
+from app.schemas.common import PaginatedResponse
 from app.services.activity_service import ActivityService
 
 router = APIRouter(prefix="/api/v1/activity", tags=["Activity"])
@@ -17,7 +18,7 @@ async def get_activity_service(
 
 @router.get(
     "/",
-    response_model=list[ActivityResponse],
+    response_model=PaginatedResponse[ActivityResponse],
     operation_id="activity_list",
     summary="List activities with filtering and pagination",
 )

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_active_user, get_current_user, get_db_session, require_wedding_access
 from app.schemas.common import SuccessResponse
+from app.schemas.settings import GroupSettingsRequest, GroupSettingsResponse
 from app.schemas.wedding import (
     WeddingCreateRequest,
     WeddingDuplicateRequest,
@@ -12,6 +13,7 @@ from app.schemas.wedding import (
     WeddingResponse,
     WeddingUpdateRequest,
 )
+from app.services.settings_service import SettingsService
 from app.services.wedding_service import WeddingService
 
 router = APIRouter(prefix="/api/v1/weddings", tags=["Weddings"])
@@ -111,6 +113,7 @@ async def delete_wedding(
 @router.post(
     "/{wedding_id}/duplicate",
     response_model=WeddingResponse,
+    status_code=status.HTTP_201_CREATED,
     operation_id="weddings_duplicate",
     summary="Duplicate a wedding with all its contents",
 )
@@ -163,3 +166,38 @@ async def get_wedding_by_code(
     wedding_service: WeddingService = Depends(get_wedding_service),
 ) -> WeddingResponse:
     return await wedding_service.get_by_code(code)
+
+
+async def get_settings_service(
+    db: AsyncSession = Depends(get_db_session),
+) -> SettingsService:
+    return SettingsService(db)
+
+
+@router.get(
+    "/{wedding_id}/settings/group",
+    response_model=GroupSettingsResponse,
+    operation_id="weddings_group_settings_get",
+    summary="Get guest-facing group settings for a wedding",
+)
+async def get_group_settings(
+    wedding_id: str,
+    current_user: dict = Depends(require_wedding_access("view")),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> GroupSettingsResponse:
+    return await settings_service.get_group_settings(wedding_id, current_user)
+
+
+@router.put(
+    "/{wedding_id}/settings/group",
+    response_model=GroupSettingsResponse,
+    operation_id="weddings_group_settings_update",
+    summary="Update guest-facing group settings for a wedding",
+)
+async def update_group_settings(
+    wedding_id: str,
+    request: GroupSettingsRequest,
+    current_user: dict = Depends(require_wedding_access("edit")),
+    settings_service: SettingsService = Depends(get_settings_service),
+) -> GroupSettingsResponse:
+    return await settings_service.update_group_settings(wedding_id, request, current_user)

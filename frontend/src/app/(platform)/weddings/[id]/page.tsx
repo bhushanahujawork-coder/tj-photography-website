@@ -8,6 +8,8 @@ import { Icon } from '@/lib/icons'
 import { Card, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { Dropdown } from '@/components/ui/dropdown'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ShareLinkModal } from '@/components/platform/share-link-modal'
@@ -30,6 +32,16 @@ const visibilityIcon: Record<string, string> = {
   hidden: 'eye-off',
 }
 
+interface GroupSettings {
+  name?: string
+  iconUrl?: string
+  welcomeMessage?: string
+  hideDeleted: boolean
+  livenessEnabled: boolean
+  anonymousViewing: boolean
+  uploadsEnabled: boolean
+}
+
 export default function WeddingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { toast } = useToast()
@@ -39,12 +51,50 @@ export default function WeddingDetailPage({ params }: { params: Promise<{ id: st
   const [shareOpen, setShareOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
+  const [group, setGroup] = useState<GroupSettings | null>(null)
+  const [groupLoading, setGroupLoading] = useState(true)
+  const [groupSaving, setGroupSaving] = useState(false)
+
   useEffect(() => {
     apiFetch<Wedding>(`/api/v1/weddings/${id}`)
       .then(data => setWedding(data))
       .catch(() => setWedding(null))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    apiFetch<GroupSettings>(`/api/v1/weddings/${id}/settings/group`)
+      .then(data => setGroup(data))
+      .catch(() => setGroup(null))
+      .finally(() => setGroupLoading(false))
+  }, [id])
+
+  const updateGroup = <K extends keyof GroupSettings>(key: K, value: GroupSettings[K]) =>
+    setGroup(prev => prev ? { ...prev, [key]: value } : prev)
+
+  const handleSaveGroup = async () => {
+    if (!group) return
+    setGroupSaving(true)
+    try {
+      await apiFetch(`/api/v1/weddings/${id}/settings/group`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: group.name,
+          icon_url: group.iconUrl,
+          welcome_message: group.welcomeMessage,
+          hide_deleted: group.hideDeleted,
+          liveness_enabled: group.livenessEnabled,
+          anonymous_viewing: group.anonymousViewing,
+          uploads_enabled: group.uploadsEnabled,
+        }),
+      })
+      toast({ title: 'Group settings saved', variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to save group settings', variant: 'error' })
+    } finally {
+      setGroupSaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -208,6 +258,103 @@ export default function WeddingDetailPage({ params }: { params: Promise<{ id: st
                       )}
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <CardTitle>Group Settings</CardTitle>
+                {group && (
+                  <Button variant="secondary" size="sm" onClick={handleSaveGroup} loading={groupSaving}>
+                    <Icon name="check" size={14} />
+                    Save
+                  </Button>
+                )}
+              </div>
+              {groupLoading ? (
+                <div className="h-20 animate-pulse rounded-lg bg-white/5" />
+              ) : group ? (
+                <CardContent className="mt-2 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label="Group Name"
+                      value={group.name || ''}
+                      onChange={e => updateGroup('name', e.target.value)}
+                      placeholder="e.g. Sharma Family Wedding"
+                    />
+                    <Input
+                      label="Group Icon URL"
+                      value={group.iconUrl || ''}
+                      onChange={e => updateGroup('iconUrl', e.target.value)}
+                      placeholder="https://…icon.png"
+                    />
+                  </div>
+                  <Input
+                    label="Welcome Message"
+                    value={group.welcomeMessage || ''}
+                    onChange={e => updateGroup('welcomeMessage', e.target.value)}
+                    placeholder="Welcome to our wedding gallery…"
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-2">
+                    <Switch
+                      checked={group.hideDeleted}
+                      onChange={v => updateGroup('hideDeleted', v)}
+                      label="Hide deleted photos from guests"
+                    />
+                    <Switch
+                      checked={group.livenessEnabled}
+                      onChange={v => updateGroup('livenessEnabled', v)}
+                      label="Require liveness check for guest login"
+                    />
+                    <Switch
+                      checked={group.anonymousViewing}
+                      onChange={v => updateGroup('anonymousViewing', v)}
+                      label="Allow anonymous viewing"
+                    />
+                    <Switch
+                      checked={group.uploadsEnabled}
+                      onChange={v => updateGroup('uploadsEnabled', v)}
+                      label="Allow guests to upload photos"
+                    />
+                  </div>
+                  <p className="text-xs text-muted">
+                    This group's share link PIN can be set from the Share Gallery modal.
+                  </p>
+                </CardContent>
+              ) : (
+                <p className="text-sm text-muted">Could not load group settings.</p>
+              )}
+            </Card>
+
+            <Card>
+              <CardTitle>Quick Links</CardTitle>
+              <CardContent className="mt-4">
+                <div className="flex w-full flex-col gap-2.5">
+                  <Link href={`/weddings/${id}/gallery`}>
+                    <Button className="w-full justify-start">
+                      <Icon name="image" size={16} />
+                      Open Gallery
+                    </Button>
+                  </Link>
+                  <Link href="/upload">
+                    <Button className="w-full justify-start" variant="secondary">
+                      <Icon name="upload" size={16} />
+                      Upload Photos
+                    </Button>
+                  </Link>
+                  <Button className="w-full justify-start" variant="secondary" onClick={() => setShareOpen(true)}>
+                    <Icon name="share" size={16} />
+                    Share Gallery
+                  </Button>
+                  <Link href="/participants">
+                    <Button className="w-full justify-start" variant="secondary">
+                      <Icon name="user-plus" size={16} />
+                      Invite Participants
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

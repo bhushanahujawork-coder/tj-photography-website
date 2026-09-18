@@ -13,6 +13,7 @@ async def wedding_id(client: AsyncClient, admin_token) -> str:
             "wedding_name": "Folder Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location, Jamnagar",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -31,7 +32,7 @@ async def test_list_folders(client: AsyncClient, test_users, admin_token, weddin
 @pytest.mark.asyncio
 async def test_create_folder(client: AsyncClient, test_users, admin_token, wedding_id):
     headers = {"Authorization": f"Bearer {admin_token}"}
-    payload = {"name": "Test Folder", "visibility": "private"}
+    payload = {"wedding_id": wedding_id, "name": "Test Folder", "visibility": "private"}
     response = await client.post(
         f"/api/v1/weddings/{wedding_id}/folders/",
         json=payload,
@@ -47,7 +48,7 @@ async def test_get_folder(client: AsyncClient, test_users, admin_token, wedding_
     headers = {"Authorization": f"Bearer {admin_token}"}
     create_resp = await client.post(
         f"/api/v1/weddings/{wedding_id}/folders/",
-        json={"name": "Get Folder"},
+        json={"wedding_id": wedding_id, "name": "Get Folder"},
         headers=headers,
     )
     folder_id = create_resp.json()["id"]
@@ -65,7 +66,7 @@ async def test_update_folder(client: AsyncClient, test_users, admin_token, weddi
     headers = {"Authorization": f"Bearer {admin_token}"}
     create_resp = await client.post(
         f"/api/v1/weddings/{wedding_id}/folders/",
-        json={"name": "Original"},
+        json={"wedding_id": wedding_id, "name": "Original"},
         headers=headers,
     )
     folder_id = create_resp.json()["id"]
@@ -84,7 +85,7 @@ async def test_delete_folder(client: AsyncClient, test_users, admin_token, weddi
     headers = {"Authorization": f"Bearer {admin_token}"}
     create_resp = await client.post(
         f"/api/v1/weddings/{wedding_id}/folders/",
-        json={"name": "Delete Me"},
+        json={"wedding_id": wedding_id, "name": "Delete Me"},
         headers=headers,
     )
     folder_id = create_resp.json()["id"]
@@ -101,12 +102,12 @@ async def test_reorder_folder(client: AsyncClient, test_users, admin_token, wedd
     headers = {"Authorization": f"Bearer {admin_token}"}
     f1 = await client.post(
         f"/api/v1/weddings/{wedding_id}/folders/",
-        json={"name": "First"},
+        json={"wedding_id": wedding_id, "name": "First"},
         headers=headers,
     )
     f2 = await client.post(
         f"/api/v1/weddings/{wedding_id}/folders/",
-        json={"name": "Second"},
+        json={"wedding_id": wedding_id, "name": "Second"},
         headers=headers,
     )
     response = await client.put(

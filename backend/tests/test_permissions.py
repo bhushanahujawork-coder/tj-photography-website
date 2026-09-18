@@ -13,6 +13,7 @@ async def wedding_id(client: AsyncClient, admin_token) -> str:
             "wedding_name": "Perm Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location, Jamnagar",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -32,7 +33,7 @@ async def test_get_permission_matrix(
     assert response.status_code == 200
     data = response.json()
     assert "wedding_id" in data
-    assert "permissions" in data
+    assert "matrix" in data
 
 
 @pytest.mark.asyncio
@@ -43,9 +44,9 @@ async def test_update_permissions(
     response = await client.put(
         f"/api/v1/weddings/{wedding_id}/permissions/",
         json={
-            "permissions": [
-                {"role": "client", "permission": "download", "allowed": False},
-            ],
+            "wedding_id": wedding_id,
+            "role": "client",
+            "permissions": {"download": False},
         },
         headers=headers,
     )
@@ -67,6 +68,6 @@ async def test_get_default_permissions(
 
 
 @pytest.mark.asyncio
-async def test_permissions_unauthorized(client: AsyncClient, wedding_id):
+async def test_permissions_unauthorized(client: AsyncClient, test_users, wedding_id):
     response = await client.get(f"/api/v1/weddings/{wedding_id}/permissions/")
     assert response.status_code == 401

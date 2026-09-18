@@ -44,6 +44,17 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 app.dependency_overrides[get_db] = override_get_db
 
 
+@pytest.fixture(autouse=True)
+def disable_rate_limit():
+    """Auth/upload rate limiting is legitimate in production but trips on
+    fast test runs; the dedicated rate-limit tests re-enable it explicitly."""
+    from app.core.config import settings as _settings
+
+    _settings.RATE_LIMIT_ENABLED = False
+    yield
+    _settings.RATE_LIMIT_ENABLED = False
+
+
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with TestSessionLocal() as session:

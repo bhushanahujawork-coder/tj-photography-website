@@ -68,6 +68,7 @@ async def test_get_wedding(client: AsyncClient, test_users, admin_token):
             "wedding_name": "Get Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -96,6 +97,7 @@ async def test_update_wedding(client: AsyncClient, test_users, admin_token):
             "wedding_name": "Original Name",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -121,6 +123,7 @@ async def test_delete_wedding(client: AsyncClient, test_users, admin_token):
             "wedding_name": "Delete Me",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -140,6 +143,7 @@ async def test_publish_wedding(client: AsyncClient, test_users, admin_token):
             "wedding_name": "Publish Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -148,7 +152,7 @@ async def test_publish_wedding(client: AsyncClient, test_users, admin_token):
 
     response = await client.post(
         f"/api/v1/weddings/{wedding_id}/publish",
-        json={"published": True},
+        json={"action": "publish"},
         headers=headers,
     )
     assert response.status_code == 200
@@ -164,6 +168,7 @@ async def test_archive_wedding(client: AsyncClient, test_users, admin_token):
             "wedding_name": "Archive Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -187,6 +192,7 @@ async def test_duplicate_wedding(client: AsyncClient, test_users, admin_token):
             "wedding_name": "Original",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -195,7 +201,7 @@ async def test_duplicate_wedding(client: AsyncClient, test_users, admin_token):
 
     response = await client.post(
         f"/api/v1/weddings/{wedding_id}/duplicate",
-        json={"new_name": "Copy of Original"},
+        json={"new_wedding_name": "Copy of Original"},
         headers=headers,
     )
     assert response.status_code == 201
@@ -211,6 +217,7 @@ async def test_get_wedding_by_code(client: AsyncClient, test_users, admin_token)
             "wedding_name": "Code Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location",
             "wedding_date": "2025-06-15T00:00:00Z",
             "wedding_code": "TEST1234",
         },

@@ -4,13 +4,18 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useHomeConfig } from '@/lib/home-config/client'
+import { ToastProvider } from '@/hooks/use-toast'
+import GuestLoginModal from '@/components/client/guest-login-modal'
 
 export default function Navbar() {
   const { config } = useHomeConfig()
   const header = config.header
+  const router = useRouter()
   const [activeSection, setActiveSection] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [clientLoginOpen, setClientLoginOpen] = useState(false)
   const [solid, setSolid] = useState(false)
 
   useEffect(() => {
@@ -91,8 +96,14 @@ export default function Navbar() {
   const navHover = solid ? '#9a7b14' : '#E9C85B'
   const hamburgerColor = solid ? '#161616' : '#ffffff'
 
+  const handleClientAuthed = () => {
+    setClientLoginOpen(false)
+    router.push('/client')
+  }
+
   return (
-    <header
+    <ToastProvider>
+      <header
       className="fixed top-0 left-0 right-0 z-50 transition-colors duration-300"
       style={{
         background: solid ? 'var(--home-bg, #eae1d2)' : 'transparent',
@@ -161,12 +172,25 @@ export default function Navbar() {
               />
             </a>
           ))}
-        </nav>
-
-        <button
+          <button
+            onClick={() => setClientLoginOpen(true)}
+            className="relative ml-1 inline-flex items-center gap-1.5 border border-gold/70 px-4 py-2 rounded-full text-[10px] xl:text-[11px] tracking-[0.18em] uppercase font-semibold whitespace-nowrap transition-all duration-300 hover:bg-gold/15"
+          style={{ color: navColor, borderColor: solid ? '#9a7b14' : 'rgba(255,255,255,0.6)' }}
           data-editor="nav"
-          onClick={() => setMobileOpen(true)}
-          className="lg:hidden flex flex-col gap-1.5 p-2.5 -mr-2.5"
+        >
+          Client Login
+        </button>
+      </nav>
+      <GuestLoginModal
+        open={clientLoginOpen}
+        onClose={() => setClientLoginOpen(false)}
+        onAuthed={handleClientAuthed}
+      />
+
+      <button
+        data-editor="nav"
+        onClick={() => setMobileOpen(true)}
+        className="lg:hidden flex flex-col gap-1.5 p-2.5 -mr-2.5"
           style={solid ? undefined : { filter: 'drop-shadow(0 1px 4px rgba(0, 0, 0, 0.55))' }}
           aria-label="Open navigation menu"
         >
@@ -218,5 +242,6 @@ export default function Navbar() {
         )}
       </AnimatePresence>
     </header>
+    </ToastProvider>
   )
 }

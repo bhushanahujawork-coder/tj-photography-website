@@ -13,6 +13,7 @@ async def wedding_id(client: AsyncClient, admin_token) -> str:
             "wedding_name": "Participant Test",
             "bride_name": "Bride",
             "groom_name": "Groom",
+            "location": "Test Location, Jamnagar",
             "wedding_date": "2025-06-15T00:00:00Z",
         },
         headers=headers,
@@ -34,7 +35,7 @@ async def test_list_participants(client: AsyncClient, test_users, admin_token, w
 @pytest.mark.asyncio
 async def test_invite_participant(client: AsyncClient, test_users, admin_token, wedding_id):
     headers = {"Authorization": f"Bearer {admin_token}"}
-    payload = {"name": "Test Guest", "email": "guest@example.com", "role": "guest"}
+    payload = {"wedding_id": wedding_id, "name": "Test Guest", "email": "guest@example.com", "role": "guest"}
     response = await client.post(
         f"/api/v1/weddings/{wedding_id}/participants/",
         json=payload,
@@ -53,9 +54,10 @@ async def test_bulk_invite_participants(
 ):
     headers = {"Authorization": f"Bearer {admin_token}"}
     payload = {
+        "wedding_id": wedding_id,
         "participants": [
-            {"name": "Guest 1", "email": "guest1@example.com"},
-            {"name": "Guest 2", "email": "guest2@example.com"},
+            {"wedding_id": wedding_id, "name": "Guest 1", "email": "guest1@example.com"},
+            {"wedding_id": wedding_id, "name": "Guest 2", "email": "guest2@example.com"},
         ],
     }
     response = await client.post(
@@ -72,7 +74,7 @@ async def test_update_participant(client: AsyncClient, test_users, admin_token, 
     headers = {"Authorization": f"Bearer {admin_token}"}
     create_resp = await client.post(
         f"/api/v1/weddings/{wedding_id}/participants/",
-        json={"name": "Update Me", "email": "update@example.com"},
+        json={"wedding_id": wedding_id, "name": "Update Me", "email": "update@example.com"},
         headers=headers,
     )
     part_id = create_resp.json()["id"]
@@ -91,7 +93,7 @@ async def test_remove_participant(client: AsyncClient, test_users, admin_token, 
     headers = {"Authorization": f"Bearer {admin_token}"}
     create_resp = await client.post(
         f"/api/v1/weddings/{wedding_id}/participants/",
-        json={"name": "Remove Me", "email": "remove@example.com"},
+        json={"wedding_id": wedding_id, "name": "Remove Me", "email": "remove@example.com"},
         headers=headers,
     )
     part_id = create_resp.json()["id"]

@@ -15,7 +15,6 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     RefreshTokenResponse,
     RegisterRequest,
-    RegisterResponse,
 )
 from app.schemas.common import SuccessResponse
 from app.schemas.user import UserResponse, UserUpdateRequest
@@ -32,7 +31,7 @@ async def get_auth_service(
 
 @router.post(
     "/register",
-    response_model=RegisterResponse,
+    response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     operation_id="auth_register",
     summary="Register a new user account",
@@ -40,7 +39,7 @@ async def get_auth_service(
 async def register(
     request: RegisterRequest,
     auth_service: AuthService = Depends(get_auth_service),
-) -> RegisterResponse:
+) -> UserResponse:
     return await auth_service.register(request)
 
 

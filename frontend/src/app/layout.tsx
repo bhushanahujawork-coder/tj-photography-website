@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Playfair_Display, Poppins } from 'next/font/google'
+import { PwaRegister } from '@/components/pwa-register'
 import './globals.css'
 
 const inter = Inter({
@@ -65,6 +66,17 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'TJ Photography',
+    statusBarStyle: 'default',
+  },
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/apple-touch-icon.png',
+    shortcut: '/icons/icon-512.png',
+  },
 }
 
 export const viewport: Viewport = {
@@ -113,6 +125,7 @@ export default function RootLayout({
           }}
         />
         {children}
+        <PwaRegister />
       </body>
     </html>
   )

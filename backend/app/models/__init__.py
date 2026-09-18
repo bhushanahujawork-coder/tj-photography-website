@@ -26,6 +26,9 @@ from app.models.download import Download
 from app.models.share_link import ShareLink
 from app.models.session import Session
 from app.models.storage_usage import StorageUsage
+from app.models.photo_reaction import PhotoReaction
+from app.models.face_profile import FaceProfile
+from app.models.otp_code import OtpCode
 
 __all__ = [
     "User",
@@ -41,6 +44,9 @@ __all__ = [
     "ShareLink",
     "Session",
     "StorageUsage",
+    "PhotoReaction",
+    "FaceProfile",
+    "OtpCode",
     "BaseModel",
     "TimestampMixin",
     "UserRole",

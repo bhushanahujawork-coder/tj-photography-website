@@ -87,6 +87,7 @@ export default function ImageCard({
         width={width}
         height={height}
         priority={priority}
+        quality={90}
         loading={priority ? undefined : 'lazy'}
         className="w-full h-full object-cover"
         sizes={sizes ?? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'}

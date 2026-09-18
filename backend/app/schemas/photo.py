@@ -39,6 +39,10 @@ class PhotoResponse(BaseModel):
     favorite: bool = Field(default=False, description="Whether marked as favorite")
     is_highlight: bool = Field(default=False, description="Whether marked as highlight")
     is_hidden: bool = Field(default=False, description="Whether hidden from gallery")
+    download_enabled: bool = Field(default=True, description="Whether downloads are enabled for this photo")
+    uploaded_by: Optional[str] = Field(default=None, description="User who uploaded the photo")
+    reaction_count: int = Field(default=0, ge=0, description="Number of user reactions")
+    reacted_by_me: bool = Field(default=False, description="Whether the current user reacted")
     created_at: datetime = Field(description="Upload timestamp")
 
     model_config = {"from_attributes": True}
@@ -50,7 +54,23 @@ class PhotoUpdateRequest(BaseModel):
     favorite: Optional[bool] = Field(default=None, description="Mark as favorite")
     is_highlight: Optional[bool] = Field(default=None, description="Mark as highlight")
     is_hidden: Optional[bool] = Field(default=None, description="Hide from gallery")
+    download_enabled: Optional[bool] = Field(default=None, description="Enable/disable downloads for this photo")
     alt_text: Optional[str] = Field(default=None, description="Alt text for accessibility")
+
+    model_config = {"from_attributes": True}
+
+
+class PhotoReactionRequest(BaseModel):
+    reacted: bool = Field(default=True, description="React (true) or remove reaction (false)")
+
+    model_config = {"from_attributes": True}
+
+
+class PhotoReactionResponse(BaseModel):
+    photo_id: str = Field(description="Photo that was reacted to")
+    reacted: bool = Field(description="Whether the reaction is active")
+    reaction_count: int = Field(default=0, ge=0, description="Total reaction count")
+    reacted_by_me: bool = Field(default=False, description="Whether the current user reacted")
 
     model_config = {"from_attributes": True}
 
@@ -85,6 +105,7 @@ class PhotoFilterParams(BaseModel):
     favorite: Optional[bool] = Field(default=None, description="Filter by favorite status")
     is_highlight: Optional[bool] = Field(default=None, description="Filter by highlight status")
     is_hidden: Optional[bool] = Field(default=None, description="Filter by hidden status")
+    uploaded_by: Optional[str] = Field(default=None, description="Filter by uploader user ID")
     include_deleted: Optional[bool] = Field(default=None, description="Include soft-deleted photos (delete permission required)")
     date_from: Optional[datetime] = Field(default=None, description="Filter photos taken after this date")
     date_to: Optional[datetime] = Field(default=None, description="Filter photos taken before this date")

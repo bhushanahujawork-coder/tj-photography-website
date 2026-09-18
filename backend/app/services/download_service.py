@@ -1,13 +1,17 @@
 import io
 import logging
+import re
 import zipfile
 from datetime import datetime, timezone
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ForbiddenError, NotFoundError
 from app.core.security import generate_share_token
 from app.core.storage import get_storage
+from app.models.album import Album
+from app.models.photo import Photo
 from app.repositories.download_repository import DownloadRepository
 from app.repositories.photo_repository import PhotoRepository
 from app.repositories.share_link_repository import ShareLinkRepository
@@ -15,6 +19,7 @@ from app.repositories.wedding_repository import WeddingRepository
 from app.schemas.download import (
     DownloadResponse,
     DownloadRecordResponse,
+    ShareAlbumResponse,
     ShareGalleryResponse,
     ShareLinkResponse,
 )
@@ -52,12 +57,16 @@ class DownloadService:
                 message=f"Permission 'download' denied for role '{role}'"
             )
 
+        if getattr(data, "pin", None):
+            self._check_wedding_pin(wedding, data.pin)
+
         download = await self.download_repo.create(
             wedding_id=data.wedding_id,
             user_id=current_user.get("sub"),
             name=f"Download_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
             type=data.type,
             photo_count=len(data.photo_ids),
+            photo_ids=data.photo_ids,
             total_size=0,
             status="processing",
         )
@@ -121,6 +130,7 @@ class DownloadService:
             code=code,
             role=data.role or "guest",
             download_enabled=data.download_enabled if hasattr(data, 'download_enabled') else True,
+            pin_code=getattr(data, "pin_code", None),
             expires_at=getattr(data, "expires_at", None),
             access_count=0,
         )
@@ -132,6 +142,7 @@ class DownloadService:
             url=_share_url(link.code),
             role=link.role,
             download_enabled=link.download_enabled,
+            pin_code=link.pin_code,
             expires_at=link.expires_at,
             access_count=link.access_count,
             created_at=link.created_at,
@@ -147,6 +158,7 @@ class DownloadService:
                 url=_share_url(link.code),
                 role=link.role,
                 download_enabled=link.download_enabled,
+                pin_code=link.pin_code,
                 expires_at=link.expires_at,
                 access_count=link.access_count,
                 created_at=link.created_at,
@@ -222,6 +234,7 @@ class DownloadService:
             url=_share_url(link.code),
             role=link.role,
             download_enabled=link.download_enabled,
+            pin_code=link.pin_code,
             expires_at=link.expires_at,
             access_count=link.access_count + 1,
             created_at=link.created_at,
@@ -239,7 +252,71 @@ class DownloadService:
             raise NotFoundError(message="Share link not found or expired")
         return link
 
-    async def access_share_gallery(self, code: str) -> ShareGalleryResponse:
+    @staticmethod
+    def _gallery_flag(wedding, key: str, default):
+        settings = wedding.settings or {}
+        gallery = settings.get("gallery") if isinstance(settings.get("gallery"), dict) else {}
+        return gallery.get(key, default)
+
+    @staticmethod
+    def _check_wedding_pin(wedding, pin: str | None) -> None:
+        """Validate the gallery PIN stored in wedding settings when pin_protection is on."""
+        settings = wedding.settings or {}
+        gallery = settings.get("gallery") if isinstance(settings.get("gallery"), dict) else {}
+        if gallery.get("pin_protection") and gallery.get("pin_code"):
+            if not pin or pin != str(gallery.get("pin_code")):
+                raise ForbiddenError(message="Invalid or missing gallery PIN")
+
+    async def enforce_share_access(
+        self, link, current_user: dict | None = None, gallery_pin: str | None = None,
+    ) -> None:
+        """Enforce gallery PIN + anonymous-viewing policy for a share access.
+
+        * PIN: when the share link has a pin_code, the ``X-Gallery-Pin`` header
+          must match before any gallery data or media is served.
+        * Anonymous: when the wedding disables ``anonymous_viewing``, an
+          authenticated participant of the wedding is required.
+        """
+        if link.pin_code:
+            if not gallery_pin or gallery_pin != str(link.pin_code):
+                raise ForbiddenError(
+                    message="Gallery PIN required",
+                    code="gallery_pin_required",
+                )
+
+        wedding = await self.wedding_repo.get(link.wedding_id)
+        if not wedding:
+            raise NotFoundError(message="Wedding not found")
+
+        anonymous_ok = self._gallery_flag(wedding, "anonymous_viewing", True)
+        if anonymous_ok:
+            return
+
+        if not current_user or not current_user.get("sub"):
+            raise ForbiddenError(
+                message="Authentication required to view this gallery",
+                code="participant_required",
+            )
+
+        from app.core.dependencies import resolve_wedding_role
+
+        try:
+            await resolve_wedding_role(self.db, link.wedding_id, current_user)
+        except ForbiddenError:
+            raise ForbiddenError(
+                message="Authentication required to view this gallery",
+                code="participant_required",
+            )
+
+    async def verify_share_pin(self, code: str, pin: str) -> bool:
+        link = await self.get_active_share_link(code)
+        if not link.pin_code:
+            return True
+        return str(link.pin_code) == str(pin)
+
+    async def access_share_gallery(
+        self, code: str, current_user: dict | None = None, gallery_pin: str | None = None,
+    ) -> ShareGalleryResponse:
         """Resolve a share code into the gallery context (wedding + capabilities).
 
         Public endpoint backing `/api/v1/share/{code}`. Validates the share
@@ -248,6 +325,7 @@ class DownloadService:
         clients can present the correct HD/download affordances.
         """
         link = await self.get_active_share_link(code)
+        await self.enforce_share_access(link, current_user=current_user, gallery_pin=gallery_pin)
         wedding = await self.wedding_repo.get(link.wedding_id)
         if not wedding:
             raise NotFoundError(message="Wedding not found")
@@ -256,6 +334,11 @@ class DownloadService:
 
         download_allowed = link.download_enabled and await self.share_role_has_permission(
             link, "download",
+        )
+
+        group_settings = (wedding.settings or {}).get("group") or {}
+        liveness_enabled = bool(
+            group_settings.get("liveness_enabled", False)
         )
 
         return ShareGalleryResponse(
@@ -267,14 +350,93 @@ class DownloadService:
                 url=_share_url(link.code),
                 role=link.role,
                 download_enabled=link.download_enabled,
+                pin_code=link.pin_code,
                 expires_at=link.expires_at,
                 access_count=link.access_count + 1,
                 created_at=link.created_at,
             ),
             download_allowed=download_allowed,
+            liveness_enabled=liveness_enabled,
         )
 
     async def share_role_has_permission(self, link, permission: str) -> bool:
         return await PermissionService(self.db).has_permission(
             link.wedding_id, link.role, permission,
         )
+
+    async def list_share_albums(
+        self, code: str, current_user: dict | None = None, gallery_pin: str | None = None,
+    ) -> list[ShareAlbumResponse]:
+        """Public share-scoped album listing backing ``/share/{code}/albums``.
+
+        Mirrors the photo-listing security model: active link + PIN/anonymous
+        access + the link role must hold ``view``. Photo counts count only
+        photos the role can actually see (never deleted; hidden stripped for
+        client/guest roles), and covers are share-scoped thumbnail URLs so a
+        custom absolute cover can be honored without ever exposing admin-only
+        media routes.
+        """
+        link = await self.get_active_share_link(code)
+        await self.enforce_share_access(link, current_user=current_user, gallery_pin=gallery_pin)
+
+        allowed = await PermissionService(self.db).has_permission(
+            link.wedding_id, link.role, "view",
+        )
+        if not allowed:
+            raise ForbiddenError(message=f"Permission 'view' denied for role '{link.role}'")
+
+        hide_invisible = link.role in ("client", "guest")
+        visible_filter = [Photo.is_deleted == False]
+        if hide_invisible:
+            visible_filter.append(Photo.is_hidden == False)
+
+        albums_result = await self.db.execute(
+            select(Album)
+            .where(Album.wedding_id == link.wedding_id)
+            .order_by(Album.sort_order.asc(), Album.created_at.asc())
+        )
+        albums = list(albums_result.scalars().all())
+        if not albums:
+            return []
+
+        album_ids = [a.id for a in albums]
+
+        count_result = await self.db.execute(
+            select(Album.id, func.count(Photo.id))
+            .join(Photo, Photo.album_id == Album.id)
+            .where(Album.id.in_(album_ids), *visible_filter)
+            .group_by(Album.id)
+        )
+        counts: dict[str, int] = {pid: 0 for pid in album_ids}
+        for album_id, count in count_result.all():
+            counts[album_id] = int(count)
+
+        cover_result = await self.db.execute(
+            select(Photo.album_id, Photo.id)
+            .where(Photo.album_id.in_(album_ids), *visible_filter)
+            .order_by(Photo.created_at.desc())
+        )
+        covers: dict[str, str] = {}
+        for album_id, photo_id in cover_result.all():
+            covers.setdefault(album_id, photo_id)
+
+        def _cover_url(album: Album) -> str | None:
+            custom = album.cover_image_url
+            if custom and re.match(r"^https?://", custom):
+                return custom
+            photo_id = covers.get(album.id)
+            if photo_id:
+                return f"/api/v1/media/share/{code}/photos/{photo_id}/content?size=thumbnail"
+            return None
+
+        return [
+            ShareAlbumResponse(
+                id=album.id,
+                name=album.name,
+                description=album.description,
+                photo_count=counts.get(album.id, 0),
+                sort_order=album.sort_order,
+                cover_url=_cover_url(album),
+            )
+            for album in albums
+        ]

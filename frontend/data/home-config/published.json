@@ -26,8 +26,8 @@
       "spacing": 32,
       "links": [
         {
-          "label": "Weddings",
-          "href": "#weddings"
+          "label": "Quick Portfolio",
+          "href": "/portfolio"
         },
         {
           "label": "Films",

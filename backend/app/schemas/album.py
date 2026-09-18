@@ -8,6 +8,7 @@ class AlbumCreateRequest(BaseModel):
     name: str = Field(min_length=1, description="Album name")
     description: Optional[str] = Field(default=None, description="Album description")
     cover_image: Optional[str] = Field(default=None, description="Cover image URL or file path")
+    download_enabled: Optional[bool] = Field(default=True, description="Whether downloads are enabled for this album")
 
     model_config = {"from_attributes": True}
 
@@ -17,6 +18,7 @@ class AlbumUpdateRequest(BaseModel):
     description: Optional[str] = Field(default=None, description="Album description")
     cover_image: Optional[str] = Field(default=None, description="Cover image URL or file path")
     clear_cover: Optional[bool] = Field(default=False, description="Clear the cover image")
+    download_enabled: Optional[bool] = Field(default=None, description="Enable/disable downloads for this album")
 
     model_config = {"from_attributes": True}
 
@@ -29,6 +31,7 @@ class AlbumResponse(BaseModel):
     cover_image_url: Optional[str] = Field(default=None, description="Cover image URL")
     photo_count: int = Field(default=0, ge=0, description="Number of photos in album")
     sort_order: int = Field(default=0, description="Display sort order")
+    download_enabled: bool = Field(default=True, description="Whether downloads are enabled for this album")
     created_at: datetime = Field(description="Creation timestamp")
 
     model_config = {"from_attributes": True}

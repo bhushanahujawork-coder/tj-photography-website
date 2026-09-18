@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, get_db_session
+from app.core.dependencies import (
+    get_current_active_user,
+    get_db_session,
+    get_optional_user,
+)
 from app.schemas.common import PaginatedResponse, SuccessResponse
 from app.schemas.photo import (
     PhotoBatchDeleteRequest,
@@ -10,6 +14,8 @@ from app.schemas.photo import (
     PhotoBatchUpdateRequest,
     PhotoExifResponse,
     PhotoFilterParams,
+    PhotoReactionRequest,
+    PhotoReactionResponse,
     PhotoResponse,
     PhotoUpdateRequest,
 )
@@ -38,6 +44,7 @@ async def list_photos(
     favorite: bool | None = Query(default=None, description="Filter by favorite status"),
     is_highlight: bool | None = Query(default=None, description="Filter by highlight status"),
     is_hidden: bool | None = Query(default=None, description="Filter by hidden status"),
+    uploaded_by: str | None = Query(default=None, description="Filter by uploader user ID"),
     include_deleted: bool | None = Query(default=None, description="Include soft-deleted photos (requires delete permission)"),
     date_from: str | None = Query(default=None, description="Filter photos taken after this date"),
     date_to: str | None = Query(default=None, description="Filter photos taken before this date"),
@@ -56,6 +63,7 @@ async def list_photos(
         favorite=favorite,
         is_highlight=is_highlight,
         is_hidden=is_hidden,
+        uploaded_by=uploaded_by,
         include_deleted=include_deleted,
         date_from=date_from,
         date_to=date_to,
@@ -86,6 +94,8 @@ async def list_share_photos(
     sort_order: str = Query(default="desc", description="Sort direction (asc/desc)"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=50, ge=1, le=200, description="Items per page"),
+    gallery_pin: str | None = Header(default=None, alias="X-Gallery-Pin"),
+    current_user: dict | None = Depends(get_optional_user),
     photo_service: PhotoService = Depends(get_photo_service),
 ) -> PaginatedResponse[PhotoResponse]:
     filters = PhotoFilterParams(
@@ -103,7 +113,7 @@ async def list_share_photos(
         page=page,
         page_size=page_size,
     )
-    return await photo_service.list_share_photos(code, filters)
+    return await photo_service.list_share_photos(code, filters, current_user, gallery_pin)
 
 
 @router.get(
@@ -236,6 +246,21 @@ async def toggle_favorite(
     photo_service: PhotoService = Depends(get_photo_service),
 ) -> PhotoResponse:
     return await photo_service.toggle_favorite(photo_id, current_user)
+
+
+@router.put(
+    "/photos/{photo_id}/reaction",
+    response_model=PhotoReactionResponse,
+    operation_id="photos_set_reaction",
+    summary="Set or remove the current user's reaction on a photo",
+)
+async def set_reaction(
+    photo_id: str,
+    request: PhotoReactionRequest,
+    current_user: dict = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service),
+) -> PhotoReactionResponse:
+    return await photo_service.set_reaction(photo_id, request.reacted, current_user)
 
 
 @router.get(

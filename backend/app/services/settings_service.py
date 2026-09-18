@@ -10,9 +10,21 @@ from app.schemas.settings import (
     BrandingSettingsRequest,
     DownloadSettingsRequest,
     GallerySettingsRequest,
+    GroupSettingsRequest,
+    GroupSettingsResponse,
 )
 
 logger = logging.getLogger(__name__)
+
+_GROUP_DEFAULTS = {
+    "name": None,
+    "icon_url": None,
+    "welcome_message": None,
+    "hide_deleted": True,
+    "liveness_enabled": False,
+    "anonymous_viewing": True,
+    "uploads_enabled": False,
+}
 
 _DEFAULT_SETTINGS = {
     "general": {
@@ -84,6 +96,33 @@ class SettingsService:
         await self._update_wedding_settings(current_user, "theme", request)
         return await self._build_response(current_user)
 
+    async def get_group_settings(
+        self, wedding_id: str, current_user: dict,
+    ) -> GroupSettingsResponse:
+        wedding = await self.wedding_repo.get(wedding_id)
+        if not wedding:
+            raise NotFoundError(message="Wedding not found")
+        settings = wedding.settings or {}
+        group = settings.get("group")
+        if not isinstance(group, dict):
+            group = {}
+        merged = dict(_GROUP_DEFAULTS)
+        merged.update({k: v for k, v in group.items() if v is not None})
+        return GroupSettingsResponse(**merged)
+
+    async def update_group_settings(
+        self, wedding_id: str, request: GroupSettingsRequest, current_user: dict,
+    ) -> GroupSettingsResponse:
+        wedding = await self.wedding_repo.get(wedding_id)
+        if not wedding:
+            raise NotFoundError(message="Wedding not found")
+        settings = dict(wedding.settings or {})
+        group = dict(settings.get("group") or {})
+        group.update(request.model_dump(exclude_none=True))
+        settings = {**settings, "group": group}
+        await self.wedding_repo.update(wedding_id, settings=settings)
+        return await self.get_group_settings(wedding_id, current_user)
+
     async def _update_wedding_settings(
         self, current_user: dict, section: str, data: dict,
     ) -> None:
@@ -91,10 +130,10 @@ class SettingsService:
             photographer_id=current_user.get("sub"),
         )
         for wedding in weddings_list:
-            current = wedding.settings or {}
-            if section not in current:
-                current[section] = {}
-            current[section].update(data)
+            current = dict(wedding.settings or {})
+            section_data = dict(current.get(section) or {})
+            section_data.update(data)
+            current = {**current, section: section_data}
             await self.wedding_repo.update(wedding.id, settings=current)
 
     async def _build_response(self, current_user: dict) -> AppSettingsResponse:

@@ -1,14 +1,17 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Icon } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Toaster } from '@/components/ui/toast'
 import { useToast } from '@/hooks/use-toast'
-import { apiFetch, apiFetchBlob, mediaUrl, type ApiError } from '@/lib/api'
+import { apiFetch, apiFetchBlob, mediaUrl, getGuestSession, setGuestSession, clearGuestSession, type ApiError } from '@/lib/api'
+import GuestLoginModal from './guest-login-modal'
 
 interface ClientPhoto {
   id: string
@@ -16,6 +19,7 @@ interface ClientPhoto {
   width: number
   height: number
   favorite: boolean
+  reactedByMe: boolean
   isHighlight: boolean
   createdAt: string
   exif?: { camera?: string }
@@ -31,6 +35,7 @@ interface BackendPhoto {
   width?: number | null
   height?: number | null
   favorite?: boolean
+  reactedByMe?: boolean
   isHighlight?: boolean
   createdAt?: string
   camera?: string | null
@@ -57,6 +62,7 @@ interface ShareGalleryInfo {
     downloadEnabled: boolean
   }
   downloadAllowed: boolean
+  livenessEnabled?: boolean
 }
 
 interface PaginatedPhotos<T> {
@@ -68,6 +74,32 @@ interface PaginatedPhotos<T> {
 }
 
 const authedBlobCache = new Map<string, string>()
+
+function useBlobMedia(
+  path: string | null | undefined,
+  grab: () => Promise<Blob>,
+  enabled: boolean,
+): string | null {
+  const [url, setUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!enabled || !path) return
+    let cancelled = false
+    grab()
+      .then((blob) => {
+        if (cancelled) return
+        const objectUrl = URL.createObjectURL(blob)
+        authedBlobCache.set(path, objectUrl)
+        setUrl(objectUrl)
+      })
+      .catch(() => {
+        if (!cancelled) setUrl(null)
+      })
+    return () => { cancelled = true }
+  }, [enabled, path, grab])
+
+  return url
+}
 
 function useAuthedMedia(path: string | null | undefined, enabled: boolean): string | null {
   const [url, setUrl] = useState<string | null>(() => {
@@ -94,19 +126,31 @@ function useAuthedMedia(path: string | null | undefined, enabled: boolean): stri
   return url
 }
 
+function usePinnedMedia(path: string | null | undefined, pin: string | null): string | null {
+  const grab = useCallback(async () => {
+    return apiFetchBlob(path || '', { 'X-Gallery-Pin': pin || '' })
+  }, [path, pin])
+  return useBlobMedia(path, grab, !!(path && pin))
+}
+
 function GalleryMedia({
   publicMode,
+  pin,
   path,
   alt,
   className,
 }: {
   publicMode: boolean
+  pin?: string | null
   path: string
   alt: string
   className?: string
 }) {
   const authedUrl = useAuthedMedia(path, !publicMode)
-  const src = publicMode ? mediaUrl(path) : authedUrl
+  const pinned = usePinnedMedia(path, publicMode && pin ? pin : null)
+  const src = publicMode
+    ? (pin ? pinned : mediaUrl(path))
+    : authedUrl
 
   if (!path || !src) {
     return (
@@ -139,6 +183,7 @@ function mapClientPhoto(p: BackendPhoto): ClientPhoto {
     width: p.width || 800,
     height: p.height || 600,
     favorite: !!p.favorite,
+    reactedByMe: !!p.reactedByMe,
     isHighlight: !!p.isHighlight,
     createdAt: p.createdAt || new Date().toISOString(),
     exif: p.camera ? { camera: p.camera } : undefined,
@@ -161,6 +206,16 @@ async function saveBlobAs(blob: Blob, filename: string) {
 
 const PHOTOS_PER_LOAD = 30
 
+type GalleryTab = 'all' | 'albums' | 'highlights' | 'favorites'
+
+interface ShareAlbum {
+  id: string
+  name: string
+  description?: string | null
+  photoCount: number
+  coverUrl?: string | null
+}
+
 export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: string; weddingCode?: string }) {
   const { toast } = useToast()
   const isShare = !!shareCode
@@ -180,12 +235,57 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
   const [displayCount, setDisplayCount] = useState(PHOTOS_PER_LOAD)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
+  const [pin, setPin] = useState<string | null>(() => {
+    if (typeof window === 'undefined' || !shareCode) return null
+    try { return localStorage.getItem(`share-pin-${shareCode}`) } catch { return null }
+  })
+  const [pinRequired, setPinRequired] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [pinLoading, setPinLoading] = useState(false)
+  const [pinError, setPinError] = useState<string | null>(null)
+  const [guestOpen, setGuestOpen] = useState(false)
+  const [livenessRequired, setLivenessRequired] = useState(false)
+  const [guestRequired, setGuestRequired] = useState(false)
+  const [authed, setAuthed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const stored = isShare
+        ? getGuestSession()
+        : JSON.parse(localStorage.getItem('auth') || 'null')
+      const session = isShare ? stored : (stored?.token ? stored : getGuestSession())
+      return !!session?.token
+    } catch { return false }
+  })
+  const [guestUser, setGuestUser] = useState<{ name?: string; phone?: string } | null>(() => {
+    if (typeof window === 'undefined') return null
+    const session = getGuestSession()
+    return session?.user ? { name: session.user.name, phone: session.user.phone } : null
+  })
+
+  const [tab, setTab] = useState<GalleryTab>('all')
+  const [albums, setAlbums] = useState<ShareAlbum[]>([])
+  const [activeAlbumId, setActiveAlbumId] = useState<string | null>(null)
+  const [tabLoading, setTabLoading] = useState(true)
+
+  const filteredPhotos = useMemo(() => {
+    if (tab === 'favorites') return photos.filter((p) => p.reactedByMe || p.favorite)
+    return photos
+  }, [photos, tab])
+
+  const visiblePhotos = useMemo(
+    () => filteredPhotos.slice(0, displayCount),
+    [filteredPhotos, displayCount],
+  )
+
   useEffect(() => {
     let cancelled = false
     async function load() {
       try {
+        const extraHeaders: Record<string, string> = {}
+        if (isShare && pin) extraHeaders['X-Gallery-Pin'] = pin
+
         if (shareCode) {
-          const gallery = await apiFetch<ShareGalleryInfo>(`/api/v1/share/${shareCode}`)
+          const gallery = await apiFetch<ShareGalleryInfo>(`/api/v1/share/${shareCode}`, { headers: extraHeaders })
           if (cancelled) return
           setWedding(gallery.wedding)
           setShare({
@@ -194,27 +294,54 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
             downloadEnabled: !!gallery.share.downloadEnabled,
             downloadAllowed: !!gallery.downloadAllowed,
           })
+          setLivenessRequired(!!gallery.livenessEnabled)
 
-          const listing = await apiFetch<PaginatedPhotos<BackendPhoto>>(
-            `/api/v1/share/${shareCode}/photos?page_size=200`,
+          const albumList = await apiFetch<ShareAlbum[]>(
+            `/api/v1/share/${shareCode}/albums`,
+            { headers: extraHeaders },
           )
           if (cancelled) return
-          setPhotos((listing.items || []).map(mapClientPhoto))
+          setAlbums((albumList || []).map((a) => ({
+            id: a.id,
+            name: a.name,
+            description: a.description ?? null,
+            photoCount: a.photoCount ?? 0,
+            coverUrl: a.coverUrl ?? null,
+          })))
         } else if (weddingCode) {
           const w = await apiFetch<WeddingInfo>(`/api/v1/weddings/by-code/${weddingCode}`)
           if (cancelled) return
           setWedding(w)
           setShare(null)
 
-          const listing = await apiFetch<PaginatedPhotos<BackendPhoto>>(
-            `/api/v1/weddings/${w.id}/photos?page_size=200`,
-          )
+          const albumList = await apiFetch<ShareAlbum[]>(`/api/v1/weddings/${w.id}/albums/`)
           if (cancelled) return
-          setPhotos((listing.items || []).map(mapClientPhoto))
+          setAlbums((albumList || []).map((a) => ({
+            id: a.id,
+            name: a.name,
+            description: a.description ?? null,
+            photoCount: a.photoCount ?? 0,
+            coverUrl: a.coverUrl ?? null,
+          })))
         }
       } catch (e) {
         if (cancelled) return
-        const status = (e as ApiError)?.status
+        const err = e as ApiError
+        const status = err?.status
+        if (status === 403 && isShare && err?.code === 'participant_required') {
+          setGuestRequired(true)
+          setError(null)
+          return
+        }
+        if (status === 403 && isShare) {
+          if (err?.code === 'gallery_pin_required' && pin) {
+            setPin(null)
+            try { localStorage.removeItem(`share-pin-${shareCode}`) } catch { }
+          }
+          setPinRequired(true)
+          setError(null)
+          return
+        }
         if (status === 404) setError('not-found')
         else if (status === 401 || status === 403) setError('private')
         else setError('error')
@@ -224,7 +351,88 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
     }
     load()
     return () => { cancelled = true }
-  }, [shareCode, weddingCode, reloadKey])
+  }, [shareCode, weddingCode, reloadKey, pin, isShare])
+
+  // Keep a persisted guest session alive: refresh the access token when it is
+  // near expiry so returning visitors stay signed in across reloads.
+  useEffect(() => {
+    const session = getGuestSession()
+    if (!session?.refreshToken) return
+    const expiresAt = session.expiresAt ? new Date(session.expiresAt).getTime() : 0
+    if (expiresAt && expiresAt - Date.now() > 5 * 60 * 1000) return
+    let cancelled = false
+    apiFetch<{ accessToken: string; refreshToken: string; expiresAt: string }>(
+      '/api/v1/auth/refresh',
+      { method: 'POST', body: JSON.stringify({ refresh_token: session.refreshToken }) },
+    )
+      .then((res) => {
+        if (cancelled) return
+        setGuestSession({
+          token: res.accessToken,
+          refreshToken: res.refreshToken,
+          expiresAt: res.expiresAt,
+          user: getGuestSession()?.user || null,
+        })
+        setAuthed(true)
+      })
+      .catch(() => { })
+    return () => { cancelled = true }
+  }, [isShare])
+
+  useEffect(() => {
+    if (loading || !wedding) return
+    let cancelled = false
+    const params = new URLSearchParams({ page_size: '200' })
+    if (tab === 'highlights') params.set('is_highlight', 'true')
+    if (tab === 'albums' && activeAlbumId) params.set('album_id', activeAlbumId)
+
+    const base = isShare
+      ? `/api/v1/share/${shareCode}/photos`
+      : `/api/v1/weddings/${wedding.id}/photos`
+
+    const extraHeaders: Record<string, string> = {}
+    if (isShare && pin) extraHeaders['X-Gallery-Pin'] = pin
+
+    apiFetch<PaginatedPhotos<BackendPhoto>>(`${base}?${params.toString()}`, { headers: extraHeaders })
+      .then((listing) => {
+        if (cancelled) return
+        setPhotos((listing.items || []).map(mapClientPhoto))
+        setDisplayCount(PHOTOS_PER_LOAD)
+      })
+      .catch(() => {
+        if (!cancelled) setPhotos([])
+      })
+      .finally(() => {
+        if (!cancelled) setTabLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [tab, activeAlbumId, wedding, isShare, shareCode, reloadKey, loading, pin])
+
+  const handlePinSubmit = async () => {
+    if (!pinInput.trim()) return
+    setPinLoading(true)
+    setPinError(null)
+    try {
+      const res = await apiFetch<{ valid: boolean }>(`/api/v1/share/${shareCode}/verify-pin`, {
+        method: 'POST',
+        body: JSON.stringify({ pin: pinInput.trim() }),
+      })
+      if (res.valid) {
+        const saved = pinInput.trim()
+        try { localStorage.setItem(`share-pin-${shareCode}`, saved) } catch { }
+        setPin(saved)
+        setPinRequired(false)
+        setPinInput('')
+        setReloadKey(k => k + 1)
+      } else {
+        setPinError('Incorrect PIN. Please try again.')
+      }
+    } catch {
+      setPinError('Could not verify the PIN. Please try again.')
+    } finally {
+      setPinLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!sentinelRef.current || photos.length === 0) return
@@ -242,20 +450,21 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
 
   useEffect(() => {
     if (lightboxIndex === null) return
+    const count = filteredPhotos.length
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setLightboxIndex(null)
       } else if (e.key === 'ArrowRight') {
-        setLightboxIndex((prev) => (prev === null ? prev : (prev + 1) % photos.length))
+        setLightboxIndex((prev) => (prev === null ? prev : (prev + 1) % count))
       } else if (e.key === 'ArrowLeft') {
         setLightboxIndex((prev) =>
-          prev === null ? prev : (prev - 1 + photos.length) % photos.length,
+          prev === null ? prev : (prev - 1 + count) % count,
         )
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lightboxIndex, photos.length])
+  }, [lightboxIndex, filteredPhotos.length])
 
   useEffect(() => {
     if (lightboxIndex === null) return
@@ -263,15 +472,24 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
     return () => { document.body.style.overflow = '' }
   }, [lightboxIndex])
 
-  const visiblePhotos = useMemo(() => photos.slice(0, displayCount), [photos, displayCount])
-
   const handleToggleFavorite = (photoId: string) => {
-    if (isShare) return
-    apiFetch<BackendPhoto>(`/api/v1/photos/${photoId}/favorite`, { method: 'PUT' })
-      .then((updated) => {
+    if (!authed && isShare) {
+      setGuestOpen(true)
+      return
+    }
+    const photo = photos.find((p) => p.id === photoId)
+    const react = !(photo?.favorite ?? false)
+    apiFetch<BackendPhoto>(`/api/v1/photos/${photoId}/reaction`, {
+      method: 'PUT',
+      body: JSON.stringify({ reacted: react }),
+    })
+      .then(() => {
         setPhotos((prev) =>
-          prev.map((p) => (p.id === photoId ? { ...p, favorite: !!updated.favorite } : p)),
+          prev.map((p) =>
+            p.id === photoId ? { ...p, favorite: react, reactedByMe: react } : p,
+          ),
         )
+        toast({ title: react ? 'Loved this photo' : 'Reaction removed', variant: 'success' })
       })
       .catch(() => {
         toast({ title: 'Could not update favorite', variant: 'error' })
@@ -279,30 +497,66 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
   }
 
   const handleDownloadPhoto = (photoId: string) => {
-    if (isShare) return
     const photo = photos.find((p) => p.id === photoId)
-    apiFetchBlob(`/api/v1/photos/${photoId}/download`)
-      .then((blob) => {
-        const name = (photo?.alt || 'photo').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '')
-        saveBlobAs(blob, `${name || 'photo'}.png`)
-      })
+    let blob: Blob | null = null
+    const finish = () => {
+      if (!blob) return
+      const name = (photo?.alt || 'photo').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '')
+      saveBlobAs(blob, `${name || 'photo'}.jpg`)
+    }
+    const path = isShare
+      ? `/api/v1/media/share/${shareCode}/photos/${photoId}/content?size=original`
+      : `/api/v1/photos/${photoId}/download`
+    const headers: Record<string, string> = {}
+    if (isShare && pin) headers['X-Gallery-Pin'] = pin
+    apiFetchBlob(path, headers)
+      .then((res) => { blob = res; finish() })
       .catch(() => {
         toast({ title: 'Download not permitted for this gallery', variant: 'error' })
       })
   }
 
   const handleDownloadAll = () => {
-    if (isShare || photos.length === 0) return
+    if (photos.length === 0) return
     const ids = photos.map((p) => p.id).join(',')
     toast({ title: 'Preparing ZIP download...', variant: 'success' })
-    apiFetchBlob(`/api/v1/photos/download?photo_ids=${ids}`)
-      .then((blob) => {
-        const base = (wedding?.weddingName || 'gallery').replace(/\s+/g, '-').toLowerCase()
-        saveBlobAs(blob, `${base}-photos.zip`)
-      })
-      .catch(() => {
-        toast({ title: 'Download not permitted for this gallery', variant: 'error' })
-      })
+    const path = isShare
+      ? `/api/v1/media/share/${shareCode}/photos/${photos[0].id}/content?size=original`
+      : `/api/v1/photos/download?photo_ids=${ids}`
+    const headers: Record<string, string> = {}
+    if (isShare && pin) headers['X-Gallery-Pin'] = pin
+    if (!isShare) {
+      apiFetchBlob(path)
+        .then((blob) => {
+          const base = (wedding?.weddingName || 'gallery').replace(/\s+/g, '-').toLowerCase()
+          saveBlobAs(blob, `${base}-photos.zip`)
+        })
+        .catch(() => {
+          toast({ title: 'Download not permitted for this gallery', variant: 'error' })
+        })
+      return
+    }
+    if (hdAllowed) toast({ title: 'HD downloads are enabled on this gallery', variant: 'success' })
+    else toast({ title: 'Download not permitted for this gallery', variant: 'error' })
+  }
+
+  const handleAuthed = () => {
+    if (isShare) {
+      const session = getGuestSession()
+      setGuestUser(session?.user ? { name: session.user.name, phone: session.user.phone } : null)
+    }
+    setAuthed(true)
+    setGuestRequired(false)
+    setGuestOpen(false)
+    setReloadKey((k) => k + 1)
+  }
+
+  const handleSignOutGuest = () => {
+    clearGuestSession()
+    setAuthed(false)
+    setGuestUser(null)
+    setGuestRequired(false)
+    setReloadKey((k) => k + 1)
   }
 
   if (loading) {
@@ -311,6 +565,94 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
         <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
           <div className="h-10 w-10 animate-pulse-soft rounded-xl bg-gold/30" />
           <p className="text-sm text-muted">Loading your gallery…</p>
+        </div>
+      </Shell>
+    )
+  }
+
+  if (pinRequired && isShare) {
+    return (
+      <Shell>
+        <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.07)_0%,transparent_70%)]" />
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="relative w-full max-w-sm"
+          >
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/10">
+              <Icon name="lock" size={28} className="text-gold" />
+            </div>
+            <h1 className="font-serif text-2xl text-foreground">Private Gallery</h1>
+            <p className="mt-2 text-sm text-muted">
+              This gallery is protected. Enter the PIN to view the wedding photos.
+            </p>
+
+            <div className="mt-8 rounded-2xl border border-gold/15 bg-card p-6">
+              <div className="mx-auto max-w-[180px]">
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="Enter 4-6 digit PIN"
+                  value={pinInput}
+                  onChange={(e) => { setPinInput(e.target.value); setPinError(null) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handlePinSubmit() }}
+                  className="text-center text-lg tracking-[0.5em]"
+                />
+              </div>
+              {pinError && <p className="mt-3 text-xs text-red-400">{pinError}</p>}
+              <Button className="mt-5 w-full" onClick={handlePinSubmit} disabled={pinLoading || !pinInput.trim()}>
+                <Icon name="lock-open" size={16} />
+                {pinLoading ? 'Checking…' : 'Unlock Gallery'}
+              </Button>
+            </div>
+
+            <Link href="/" className="mt-6 inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors">
+              <Icon name="globe" size={14} />
+              Back to TJ Photography
+            </Link>
+          </motion.div>
+        </div>
+      </Shell>
+    )
+  }
+
+  if (guestRequired && isShare) {
+    return (
+      <Shell>
+        <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.07)_0%,transparent_70%)]" />
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="relative w-full max-w-sm"
+          >
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/10">
+              <Icon name="user" size={28} className="text-gold" />
+            </div>
+            <h1 className="font-serif text-2xl text-foreground">Private Gallery</h1>
+            <p className="mt-2 text-sm text-muted">
+              This gallery is private to the wedding guests. Verify your number with the code TJ sent to view and like the photos.
+            </p>
+
+            <div className="mt-8 rounded-2xl border border-gold/15 bg-card p-6">
+              <Button className="w-full" onClick={() => setGuestOpen(true)}>
+                <Icon name="message" size={16} />
+                Verify My Number
+              </Button>
+              <p className="mt-3 text-center text-[11px] text-muted">
+                A one-time code is sent to your phone. No account or password needed.
+              </p>
+            </div>
+
+            <Link href="/" className="mt-6 inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors">
+              <Icon name="globe" size={14} />
+              Back to TJ Photography
+            </Link>
+          </motion.div>
         </div>
       </Shell>
     )
@@ -368,10 +710,36 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
   }
 
   const code = wedding?.weddingCode || share?.code || ''
-  const galleryEmpty = photos.length === 0
-  const canFavorite = !isShare
-  const canDownload = !isShare
   const hdAllowed = isShare ? (share?.downloadAllowed ?? false) && (share?.downloadEnabled ?? false) : true
+  const canFavorite = true
+  const canDownload = !isShare || hdAllowed
+  const showingAlbumList = tab === 'albums' && !activeAlbumId
+  const availableCount = showingAlbumList
+    ? `${albums.length} album${albums.length !== 1 ? 's' : ''}`
+    : `${filteredPhotos.length} photo${filteredPhotos.length !== 1 ? 's' : ''}`
+  const galleryEmpty = filteredPhotos.length === 0
+
+  const tabs: { key: GalleryTab; label: string; icon: string }[] = [
+    { key: 'all', label: 'All Photos', icon: 'images' },
+    { key: 'albums', label: 'Albums', icon: 'folder' },
+    { key: 'highlights', label: 'Highlights', icon: 'star' },
+    { key: 'favorites', label: 'Liked', icon: 'heart' },
+  ]
+
+  const handleSelectTab = (next: GalleryTab) => {
+    if (next === tab) return
+    setTabLoading(true)
+    setTab(next)
+    setActiveAlbumId(null)
+    setLightboxIndex(null)
+  }
+
+  const handleOpenAlbum = (albumId: string) => {
+    setTabLoading(true)
+    setActiveAlbumId(albumId)
+    setLightboxIndex(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <Shell>
@@ -386,12 +754,28 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
               </div>
               <span className="font-serif text-base text-foreground">TJ Photography</span>
             </Link>
-            {code && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-[11px] font-medium tracking-wide text-gold">
-                <Icon name="lock" size={11} />
-                {code}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {isShare && authed && (
+                <span className="inline-flex max-w-[180px] items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-[11px] font-medium text-gold">
+                  <Icon name="user" size={11} />
+                  <span className="truncate">{guestUser?.name || 'Verified Guest'}</span>
+                  <button
+                    type="button"
+                    onClick={handleSignOutGuest}
+                    title="Sign out of this gallery"
+                    className="ml-0.5 text-gold/60 transition-colors hover:text-gold"
+                  >
+                    <Icon name="x" size={10} />
+                  </button>
+                </span>
+              )}
+              {code && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-[11px] font-medium tracking-wide text-gold">
+                  <Icon name="lock" size={11} />
+                  {code}
+                </span>
+              )}
+            </div>
           </div>
 
           <motion.div
@@ -425,12 +809,12 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
                 </span>
               )}
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="images" size={13} />
-                {photos.length} photo{photos.length !== 1 ? 's' : ''}
+                <Icon name={showingAlbumList ? 'folder' : 'images'} size={13} />
+                {availableCount}
               </span>
             </div>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-              {canDownload && (
+              {canDownload && !showingAlbumList && (
                 <Button onClick={handleDownloadAll} variant="secondary" size="sm" disabled={galleryEmpty}>
                   <Icon name="download" size={15} />
                   Download All
@@ -447,68 +831,178 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
         </header>
 
         <main className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24 pt-6">
-          {galleryEmpty ? (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="flex flex-col items-center justify-center py-24 text-center"
-            >
-              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
-                <Icon name="images" size={28} className="text-muted" />
-              </div>
-              <h2 className="font-serif text-xl text-foreground">No photos yet</h2>
-              <p className="mt-1 text-sm text-muted">
-                {isShare
-                    ? 'TJ will upload your wedding moments here. Check back soon.'
-                    : 'This wedding has no photos uploaded yet. Check back soon.'}
-              </p>
-            </motion.div>
-          ) : (
-            <>
-              <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
-                {visiblePhotos.map((photo, index) => (
+          <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
+            {tabs.map((t) => {
+              const active = tab === t.key || (t.key === 'albums' && tab === 'albums')
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => handleSelectTab(t.key)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                    active
+                      ? 'bg-gold text-black'
+                      : 'border border-white/10 text-muted hover:border-gold/40 hover:text-foreground',
+                  )}
+                >
+                  <Icon name={t.icon as 'images'} size={14} />
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {showingAlbumList ? (
+            albums.length === 0 ? (
+              <EmptyState
+                icon="folder"
+                title="No albums yet"
+                description="TJ can group your photos into albums — check back soon."
+              />
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {albums.map((album, index) => (
                   <motion.button
-                    key={photo.id}
+                    key={album.id}
                     type="button"
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.02 }}
-                    onClick={() => setLightboxIndex(index)}
-                    className="group relative mb-4 block w-full cursor-zoom-in overflow-hidden rounded-xl border border-white/5 bg-card text-left"
-                    style={{ aspectRatio: `${photo.width}/${photo.height}` }}
+                    transition={{ duration: 0.3, delay: index * 0.03 }}
+                    onClick={() => handleOpenAlbum(album.id)}
+                    className="group relative block w-full overflow-hidden rounded-xl border border-white/5 bg-card text-left"
                   >
-                    <GalleryMedia
-                      publicMode={isShare}
-                      path={photo.thumbnailPath}
-                      alt={photo.alt}
-                      className="transition-transform duration-500 group-hover:scale-[1.03]"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                    <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                      <span className="truncate text-xs text-white/85">{photo.alt}</span>
-                      {photo.favorite && (
-                        <Icon name="heart" size={14} className="shrink-0 fill-red-400 text-red-400" />
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-white/5">
+                      {album.coverUrl ? (
+                        <GalleryMedia
+                          publicMode={isShare}
+                          pin={pin}
+                          path={album.coverUrl}
+                          alt={album.name}
+                          className="transition-transform duration-500 group-hover:scale-[1.04]"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Icon name="folder" size={28} className="text-white/15" />
+                        </div>
                       )}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <span className="truncate text-xs text-white/90">{album.name}</span>
+                      </div>
                     </div>
-                    {photo.isHighlight && !photo.favorite && (
-                      <span className="pointer-events-none absolute left-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gold/20 backdrop-blur-sm">
-                        <Icon name="star" size={12} className="text-gold" />
+                    <div className="flex items-center justify-between gap-2 px-4 py-3">
+                      <span className="truncate text-sm font-medium text-foreground">{album.name}</span>
+                      <span className="shrink-0 text-xs text-muted">
+                        {album.photoCount} photo{album.photoCount !== 1 ? 's' : ''}
                       </span>
-                    )}
+                    </div>
                   </motion.button>
                 ))}
               </div>
+            )
+          ) : (
+            <>
+              {activeAlbumId && (
+                <div className="mb-6 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveAlbumId(null)}
+                    className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+                  >
+                    <Icon name="chevron-left" size={15} />
+                    All albums
+                  </button>
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {albums.find((a) => a.id === activeAlbumId)?.name}
+                  </span>
+                </div>
+              )}
 
-              <div ref={sentinelRef} className="flex items-center justify-center pt-4">
-                {displayCount < photos.length ? (
+              {tabLoading ? (
+                <div className="flex items-center justify-center py-24">
                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold/30 border-t-gold" />
-                ) : (
-                  <p className="text-xs text-muted/60">
-                    All {photos.length} photo{photos.length !== 1 ? 's' : ''} loaded
-                  </p>
-                )}
-              </div>
+                </div>
+              ) : galleryEmpty ? (
+                <EmptyState
+                  icon={tab === 'favorites' ? 'heart' : tab === 'highlights' ? 'star' : 'images'}
+                  title={
+                    tab === 'favorites'
+                      ? 'No liked photos yet'
+                      : tab === 'highlights'
+                        ? 'No highlights yet'
+                        : 'No photos yet'
+                  }
+                  description={
+                    tab === 'favorites'
+                      ? (isShare && !authed
+                          ? 'Sign in with your phone to like photos. They will appear here.'
+                          : 'Tap the heart on any photo and it will appear here.')
+                      : tab === 'highlights'
+                        ? 'TJ has not marked any highlights for this gallery yet.'
+                        : tab === 'albums' && activeAlbumId
+                          ? 'No photos in this album yet. Check back soon.'
+                          : isShare
+                            ? 'TJ will upload your wedding moments here. Check back soon.'
+                            : 'This wedding has no photos uploaded yet. Check back soon.'
+                  }
+                  action={
+                    tab === 'favorites' && isShare && !authed ? (
+                      <Button onClick={() => setGuestOpen(true)} size="sm" variant="secondary">
+                        <Icon name="heart" size={14} />
+                        Sign in to like photos
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : (
+                <>
+                  <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
+                    {visiblePhotos.map((photo, index) => (
+                      <motion.button
+                        key={photo.id}
+                        type="button"
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.02 }}
+                        onClick={() => setLightboxIndex(index)}
+                        className="group relative mb-4 block w-full cursor-zoom-in overflow-hidden rounded-xl border border-white/5 bg-card text-left"
+                        style={{ aspectRatio: `${photo.width}/${photo.height}` }}
+                      >
+                        <GalleryMedia
+                          publicMode={isShare}
+                          pin={pin}
+                          path={photo.thumbnailPath}
+                          alt={photo.alt}
+                          className="transition-transform duration-500 group-hover:scale-[1.03]"
+                        />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                        <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                          <span className="truncate text-xs text-white/85">{photo.alt}</span>
+                          {photo.favorite && (
+                            <Icon name="heart" size={14} className="shrink-0 fill-red-400 text-red-400" />
+                          )}
+                        </div>
+                        {photo.isHighlight && !photo.favorite && (
+                          <span className="pointer-events-none absolute left-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gold/20 backdrop-blur-sm">
+                            <Icon name="star" size={12} className="text-gold" />
+                          </span>
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+
+                  <div ref={sentinelRef} className="flex items-center justify-center pt-4">
+                    {displayCount < filteredPhotos.length ? (
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold/30 border-t-gold" />
+                    ) : (
+                      <p className="text-xs text-muted/60">
+                        All {filteredPhotos.length} photo{filteredPhotos.length !== 1 ? 's' : ''} loaded
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
         </main>
@@ -521,14 +1015,15 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
       </div>
 
       <AnimatePresence>
-        {lightboxIndex !== null && photos[lightboxIndex] && (
+        {lightboxIndex !== null && filteredPhotos[lightboxIndex] && (
           <GalleryLightbox
             key={`lb-${lightboxIndex}`}
-            photos={photos}
+            photos={filteredPhotos}
             index={lightboxIndex}
             onClose={() => setLightboxIndex(null)}
             onIndexChange={setLightboxIndex}
             isShare={isShare}
+            pin={pin}
             canFavorite={canFavorite}
             canDownload={canDownload}
             hdAllowed={hdAllowed}
@@ -537,6 +1032,13 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
           />
         )}
       </AnimatePresence>
+    <GuestLoginModal
+        open={guestOpen}
+        shareCode={isShare ? shareCode : undefined}
+        onClose={() => setGuestOpen(false)}
+        onAuthed={handleAuthed}
+        livenessRequired={livenessRequired}
+      />
     </Shell>
   )
 }
@@ -547,6 +1049,7 @@ function GalleryLightbox({
   onClose,
   onIndexChange,
   isShare,
+  pin,
   canFavorite,
   canDownload,
   hdAllowed,
@@ -558,6 +1061,7 @@ function GalleryLightbox({
   onClose: () => void
   onIndexChange: (index: number) => void
   isShare: boolean
+  pin: string | null
   canFavorite: boolean
   canDownload: boolean
   hdAllowed: boolean
@@ -639,6 +1143,7 @@ function GalleryLightbox({
         >
           <GalleryMedia
             publicMode={isShare}
+            pin={pin}
             path={hd ? photo.originalPath : photo.mediumPath}
             alt={photo.alt}
             className="max-h-[82vh] max-w-[88vw] rounded-lg object-contain"
@@ -704,3 +1209,4 @@ function Shell({ children }: { children: React.ReactNode }) {
     </div>
   )
 }
+

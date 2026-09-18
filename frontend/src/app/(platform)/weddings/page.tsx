@@ -3,9 +3,10 @@
 import { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { cn, formatDate } from '@/lib/utils'
 import { Icon } from '@/lib/icons'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ const tabs = ['All', 'Active', 'Archived', 'Draft'] as const
 
 export default function WeddingsPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<string>('All')
   const [weddings, setWeddings] = useState<Wedding[]>([])
@@ -240,7 +242,7 @@ export default function WeddingsPage() {
                             label: 'View',
                             value: 'view',
                             icon: <Icon name="eye" size={16} />,
-                            onClick: () => {},
+                            onClick: () => router.push(`/weddings/${wedding.id}`),
                           },
                           {
                             label: 'Duplicate',

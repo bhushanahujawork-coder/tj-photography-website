@@ -34,6 +34,7 @@ class AlbumService:
             name=data.name,
             description=data.description,
             cover_image_url=data.cover_image,
+            download_enabled=data.download_enabled if data.download_enabled is not None else True,
             sort_order=next_order,
         )
 
@@ -66,6 +67,7 @@ class AlbumService:
             name=data.name,
             description=data.description,
             cover_image_url=data.cover_image,
+            download_enabled=data.download_enabled,
         )
         if data.clear_cover and updated is not None:
             updated.cover_image_url = None

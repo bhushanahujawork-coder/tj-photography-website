@@ -30,6 +30,19 @@ async def list_notifications(
 
 
 @router.put(
+    "/mark-all-read",
+    response_model=SuccessResponse,
+    operation_id="notifications_mark_all_read",
+    summary="Mark all notifications as read",
+)
+async def mark_all_read(
+    current_user: dict = Depends(get_current_active_user),
+    notification_service: NotificationService = Depends(get_notification_service),
+) -> SuccessResponse:
+    return await notification_service.mark_all_read(current_user)
+
+
+@router.put(
     "/{notification_id}",
     response_model=NotificationResponse,
     operation_id="notifications_update",
@@ -42,19 +55,6 @@ async def update_notification(
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> NotificationResponse:
     return await notification_service.update(notification_id, request, current_user)
-
-
-@router.put(
-    "/mark-all-read",
-    response_model=SuccessResponse,
-    operation_id="notifications_mark_all_read",
-    summary="Mark all notifications as read",
-)
-async def mark_all_read(
-    current_user: dict = Depends(get_current_active_user),
-    notification_service: NotificationService = Depends(get_notification_service),
-) -> SuccessResponse:
-    return await notification_service.mark_all_read(current_user)
 
 
 @router.get(

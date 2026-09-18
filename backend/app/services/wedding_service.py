@@ -106,7 +106,7 @@ class WeddingService:
 
         code = generate_wedding_code()
         wedding = await self.wedding_repo.create(
-            wedding_name=data.new_name or f"{original.wedding_name} (Copy)",
+            wedding_name=data.new_wedding_name or f"{original.wedding_name} (Copy)",
             bride_name=original.bride_name,
             groom_name=original.groom_name,
             wedding_date=original.wedding_date,

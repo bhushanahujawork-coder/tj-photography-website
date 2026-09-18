@@ -13,7 +13,8 @@ from app.routers import (
     auth_router, weddings_router, albums_router, folders_router,
     photos_router, participants_router, uploads_router, media_router,
     downloads_router, activity_router, notifications_router, users_router,
-    settings_router, dashboard_router, permissions_router,
+    settings_router, dashboard_router, permissions_router, faces_router,
+    client_router,
 )
 
 logger = setup_logging()
@@ -79,6 +80,8 @@ app.include_router(users_router)
 app.include_router(settings_router)
 app.include_router(dashboard_router)
 app.include_router(permissions_router)
+app.include_router(faces_router)
+app.include_router(client_router)
 
 
 @app.get("/health", tags=["System"])

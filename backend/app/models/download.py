@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Index, Integer, String
+from sqlalchemy import JSON, Column, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -19,6 +19,7 @@ class Download(BaseModel):
     name = Column(String(255), nullable=False)
     type = Column(String(20), default=DownloadType.SINGLE.value, nullable=False)
     photo_count = Column(Integer, default=0, nullable=False)
+    photo_ids = Column(JSON, nullable=True, default=list)
     total_size = Column(Integer, default=0, nullable=False)
     status = Column(
         String(20),

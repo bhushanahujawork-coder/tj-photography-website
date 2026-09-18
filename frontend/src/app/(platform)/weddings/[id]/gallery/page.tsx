@@ -21,7 +21,7 @@ import { ShareLinkModal } from '@/components/platform/share-link-modal'
 import { AuthGuard } from '@/components/platform/auth-guard'
 import { Breadcrumb } from '@/components/platform/breadcrumb'
 import { useToast } from '@/hooks/use-toast'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, apiFetchBlob, mediaUrl } from '@/lib/api'
 import type { Photo, Album, Folder } from '@/types/platform'
 
 const PHOTOS_PER_PAGE = 20
@@ -96,7 +96,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
         const items: Photo[] = ((photosData?.items || photosData || []) as any[]).map(p => ({
           id: p.id,
           weddingId: p.weddingId,
-          src: p.originalUrl || p.mediumUrl || p.thumbnailUrl || '',
+          src: mediaUrl(p.originalUrl || p.mediumUrl || p.thumbnailUrl || ''),
           alt: p.altText || p.filename,
           width: p.width || 800,
           height: p.height || 600,
@@ -117,6 +117,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
           albumId: p.albumId,
         }))
         setApiPhotos(items)
+        setFavorites(new Set(items.filter(i => i.favorite).map(i => i.id)))
       } catch (e) {
         console.error('Failed to load gallery data', e)
       } finally {
@@ -267,27 +268,72 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
     setLoadedImages(prev => new Set(prev).add(id))
   }, [])
 
-  const toggleFavorite = useCallback((photoId: string) => {
+  const toggleFavorite = useCallback(async (photoId: string) => {
+    const wasFavorite = favorites.has(photoId)
     setFavorites(prev => {
       const next = new Set(prev)
       if (next.has(photoId)) next.delete(photoId)
       else next.add(photoId)
       return next
     })
-  }, [])
+    try {
+      await apiFetch(`/api/v1/photos/${photoId}/reaction`, {
+        method: 'PUT',
+        body: JSON.stringify({ reacted: !wasFavorite }),
+      })
+    } catch {
+      setFavorites(prev => {
+        const next = new Set(prev)
+        if (next.has(photoId)) next.delete(photoId)
+        else next.add(photoId)
+        return next
+      })
+      toast({ title: 'Could not update favorite', variant: 'error' })
+    }
+  }, [favorites, toast])
 
-  const handleDownload = useCallback((photoId: string) => {
+  const downloadPhoto = useCallback(async (photoId: string) => {
     const photo = allPhotos.find(p => p.id === photoId)
-    toast({
-      title: 'Download started',
-      description: photo ? `Downloading "${photo.alt}"` : 'Preparing download...',
-      variant: 'success',
-    })
+    try {
+      const blob = await apiFetchBlob(`/api/v1/photos/${photoId}/download`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${photo?.alt || photoId}.png`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast({ title: 'Download failed', variant: 'error' })
+    }
   }, [allPhotos, toast])
 
-  const handleDownloadAll = useCallback(() => {
-    toast({ title: 'Preparing zip download...', variant: 'success' })
+  const handleDownload = useCallback(async (photoId: string) => {
+    downloadPhoto(photoId)
+  }, [downloadPhoto])
+
+  const downloadPhotos = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return
+    try {
+      const blob = await apiFetchBlob(`/api/v1/photos/download?photo_ids=${ids.join(',')}`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `photos-${Date.now()}.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast({ title: `Downloaded ${ids.length} photo${ids.length !== 1 ? 's' : ''}`, variant: 'success' })
+    } catch {
+      toast({ title: 'Download failed', variant: 'error' })
+    }
   }, [toast])
+
+  const handleDownloadAll = useCallback(() => {
+    downloadPhotos(allPhotos.map(p => p.id))
+  }, [allPhotos, downloadPhotos])
 
   const toggleSelect = useCallback((photoId: string) => {
     setSelectedIds(prev => {
@@ -306,46 +352,119 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
     setSelectedIds(new Set())
   }, [])
 
-  const batchFavorite = useCallback(() => {
-    selectedIds.forEach(id => toggleFavorite(id))
-    toast({ title: `${selectedIds.size} photo${selectedIds.size !== 1 ? 's' : ''} favorited`, variant: 'success' })
+  const batchFavorite = useCallback(async () => {
+    const ids = Array.from(selectedIds)
     setSelectedIds(new Set())
-  }, [selectedIds, toggleFavorite, toast])
+    const current = new Set(favorites)
+    const alreadyFav = ids.every(id => current.has(id))
+    ids.forEach(id => {
+      if (alreadyFav) current.delete(id)
+      else current.add(id)
+    })
+    setFavorites(current)
+    toast({ title: `${ids.length} photo${ids.length !== 1 ? 's' : ''} ${alreadyFav ? 'unfavorited' : 'favorited'}`, variant: 'success' })
+    await Promise.all(ids.map(id =>
+      apiFetch(`/api/v1/photos/${id}/reaction`, {
+        method: 'PUT',
+        body: JSON.stringify({ reacted: !alreadyFav }),
+      }).catch(() => toast({ title: 'Could not update some photos', variant: 'error' })),
+    ))
+  }, [selectedIds, favorites, toast])
 
   const batchDownload = useCallback(() => {
-    toast({ title: `Downloading ${selectedIds.size} photo${selectedIds.size !== 1 ? 's' : ''}...`, variant: 'success' })
+    downloadPhotos(Array.from(selectedIds))
     setSelectedIds(new Set())
-  }, [selectedIds, toast])
+  }, [selectedIds, downloadPhotos])
 
   const batchDelete = useCallback(() => {
+    const ids = Array.from(selectedIds)
     setConfirmDialog({
       open: true,
       title: 'Delete Photos',
-      description: `Are you sure you want to delete ${selectedIds.size} photo${selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.`,
-      onConfirm: () => {
-        setDeletedIds(prev => new Set([...prev, ...selectedIds]))
-        setSelectedIds(new Set())
+      description: `Are you sure you want to delete ${ids.length} photo${ids.length !== 1 ? 's' : ''}?`,
+      onConfirm: async () => {
         setConfirmDialog(prev => ({ ...prev, open: false }))
-        toast({ title: `${selectedIds.size} photo${selectedIds.size !== 1 ? 's' : ''} deleted`, variant: 'success' })
+        try {
+          await apiFetch(`/api/v1/photos/batch/delete`, {
+            method: 'POST',
+            body: JSON.stringify({ photo_ids: ids, permanent: false }),
+          })
+          setDeletedIds(prev => new Set([...prev, ...ids]))
+          setSelectedIds(new Set())
+          toast({ title: `${ids.length} photo${ids.length !== 1 ? 's' : ''} deleted`, variant: 'success' })
+        } catch {
+          toast({ title: 'Could not delete photos', variant: 'error' })
+        }
       },
     })
   }, [selectedIds, toast])
 
-  const batchHide = useCallback(() => {
-    setHiddenIds(prev => new Set([...prev, ...selectedIds]))
+  const batchHide = useCallback(async () => {
+    const ids = Array.from(selectedIds)
     setSelectedIds(new Set())
-    toast({ title: `${selectedIds.size} photo${selectedIds.size !== 1 ? 's' : ''} hidden`, variant: 'success' })
+    try {
+      await apiFetch(`/api/v1/photos/batch/update`, {
+        method: 'POST',
+        body: JSON.stringify({ photo_ids: ids, updates: { is_hidden: true } }),
+      })
+      setHiddenIds(prev => new Set([...prev, ...ids]))
+      toast({ title: `${ids.length} photo${ids.length !== 1 ? 's' : ''} hidden`, variant: 'success' })
+    } catch {
+      toast({ title: 'Could not hide photos', variant: 'error' })
+    }
   }, [selectedIds, toast])
 
-  const batchAddToAlbum = useCallback(() => {
-    toast({ title: `Added ${selectedIds.size} photo${selectedIds.size !== 1 ? 's' : ''} to album`, variant: 'success' })
+  const batchHighlight = useCallback(async (highlighted: boolean) => {
+    const ids = Array.from(selectedIds)
     setSelectedIds(new Set())
+    try {
+      await apiFetch(`/api/v1/photos/batch/update`, {
+        method: 'POST',
+        body: JSON.stringify({ photo_ids: ids, updates: { is_highlight: highlighted } }),
+      })
+      setApiPhotos(prev => prev.map(p =>
+        ids.includes(p.id) ? { ...p, isHighlight: highlighted } : p
+      ))
+      toast({
+        title: `${ids.length} photo${ids.length !== 1 ? 's' : ''} ${highlighted ? 'added to highlights' : 'removed from highlights'}`,
+        variant: 'success',
+      })
+    } catch {
+      toast({ title: 'Could not update highlights', variant: 'error' })
+    }
   }, [selectedIds, toast])
 
-  const batchMoveToFolder = useCallback(() => {
-    toast({ title: `Moved ${selectedIds.size} photo${selectedIds.size !== 1 ? 's' : ''} to folder`, variant: 'success' })
+  const batchAddToAlbum = useCallback(async (albumId: string) => {
+    const ids = Array.from(selectedIds)
     setSelectedIds(new Set())
-  }, [selectedIds, toast])
+    const album = albums.find(a => a.id === albumId)
+    try {
+      await apiFetch(`/api/v1/photos/batch/move`, {
+        method: 'POST',
+        body: JSON.stringify({ photo_ids: ids, album_id: albumId }),
+      })
+      toast({ title: `Added ${ids.length} photo${ids.length !== 1 ? 's' : ''} to "${album?.name || 'album'}"`, variant: 'success' })
+      setRefreshTick(t => t + 1)
+    } catch {
+      toast({ title: 'Could not move photos', variant: 'error' })
+    }
+  }, [selectedIds, albums, toast])
+
+  const batchMoveToFolder = useCallback(async (folderId: string) => {
+    const ids = Array.from(selectedIds)
+    setSelectedIds(new Set())
+    const folder = folders.find(f => f.id === folderId)
+    try {
+      await apiFetch(`/api/v1/photos/batch/move`, {
+        method: 'POST',
+        body: JSON.stringify({ photo_ids: ids, folder_id: folderId }),
+      })
+      toast({ title: `Moved ${ids.length} photo${ids.length !== 1 ? 's' : ''} to "${folder?.name || 'folder'}"`, variant: 'success' })
+      setRefreshTick(t => t + 1)
+    } catch {
+      toast({ title: 'Could not move photos', variant: 'error' })
+    }
+  }, [selectedIds, folders, toast])
 
   const handlePhotoClick = useCallback((photo: Photo, index: number) => {
     if (selectMode) {
@@ -394,19 +513,35 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
       open: true,
       title: 'Delete Photo',
       description: `Are you sure you want to delete "${photo?.alt || 'this photo'}"?`,
-      onConfirm: () => {
-        setDeletedIds(prev => new Set([...prev, photoId]))
+      onConfirm: async () => {
         setContextMenu(null)
         setConfirmDialog(prev => ({ ...prev, open: false }))
-        toast({ title: 'Photo deleted', variant: 'success' })
+        try {
+          await apiFetch(`/api/v1/photos/batch/delete`, {
+            method: 'POST',
+            body: JSON.stringify({ photo_ids: [photoId], permanent: false }),
+          })
+          setDeletedIds(prev => new Set([...prev, photoId]))
+          toast({ title: 'Photo deleted', variant: 'success' })
+        } catch {
+          toast({ title: 'Could not delete photo', variant: 'error' })
+        }
       },
     })
   }, [allPhotos, toast])
 
-  const handleHidePhoto = useCallback((photoId: string) => {
-    setHiddenIds(prev => new Set([...prev, photoId]))
-    setContextMenu(null)
-    toast({ title: 'Photo hidden', variant: 'success' })
+  const handleHidePhoto = useCallback(async (photoId: string) => {
+    try {
+      await apiFetch(`/api/v1/photos/batch/update`, {
+        method: 'POST',
+        body: JSON.stringify({ photo_ids: [photoId], updates: { is_hidden: true } }),
+      })
+      setHiddenIds(prev => new Set([...prev, photoId]))
+      setContextMenu(null)
+      toast({ title: 'Photo hidden', variant: 'success' })
+    } catch {
+      toast({ title: 'Could not hide photo', variant: 'error' })
+    }
   }, [toast])
 
   useEffect(() => {
@@ -946,6 +1081,27 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
                       <Icon name="heart" size={14} />
                       Favorite
                     </Button>
+                    <Dropdown
+                      trigger={
+                        <Button variant="secondary" size="sm">
+                          <Icon name="star" size={14} />
+                          Highlight
+                          <Icon name="chevron-down" size={12} />
+                        </Button>
+                      }
+                      items={[
+                        {
+                          label: 'Add to Highlights',
+                          value: 'add',
+                          onClick: () => batchHighlight(true),
+                        },
+                        {
+                          label: 'Remove from Highlights',
+                          value: 'remove',
+                          onClick: () => batchHighlight(false),
+                        },
+                      ]}
+                    />
                     <Button variant="secondary" size="sm" onClick={batchDownload}>
                       <Icon name="download" size={14} />
                       Download
@@ -961,7 +1117,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
                       items={albums.map(a => ({
                         label: a.name,
                         value: a.id,
-                        onClick: batchAddToAlbum,
+                        onClick: () => batchAddToAlbum(a.id),
                       }))}
                     />
                     <Dropdown
@@ -975,7 +1131,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
                       items={folders.map(f => ({
                         label: f.name,
                         value: f.id,
-                        onClick: batchMoveToFolder,
+                        onClick: () => batchMoveToFolder(f.id),
                       }))}
                     />
                     <Button variant="secondary" size="sm" onClick={batchHide}>
@@ -1065,6 +1221,32 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
                   />
                   {favorites.has(contextMenu.photo.id) ? 'Unfavorite' : 'Favorite'}
                 </button>
+                <button
+                  onClick={() => {
+                    const photo = contextMenu.photo
+                    apiFetch(`/api/v1/photos/batch/update`, {
+                      method: 'POST',
+                      body: JSON.stringify({ photo_ids: [photo.id], updates: { is_highlight: !photo.isHighlight } }),
+                    }).then(() => {
+                      setApiPhotos(prev => prev.map(p =>
+                        p.id === photo.id ? { ...p, isHighlight: !photo.isHighlight } : p
+                      ))
+                      toast({ title: photo.isHighlight ? 'Removed from highlights' : 'Added to highlights', variant: 'success' })
+                    }).catch(() => toast({ title: 'Could not update highlight', variant: 'error' }))
+                    closeContextMenu()
+                  }}
+                  className={cn(
+                    'flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-white/5',
+                    contextMenu.photo.isHighlight ? 'text-gold' : 'text-foreground'
+                  )}
+                >
+                  <Icon
+                    name="star"
+                    size={14}
+                    className={contextMenu.photo.isHighlight ? 'fill-gold text-gold' : 'text-muted'}
+                  />
+                  {contextMenu.photo.isHighlight ? 'Remove from Highlights' : 'Add to Highlights'}
+                </button>
                 <Dropdown
                   trigger={
                     <div className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-white/5 transition-colors cursor-pointer">
@@ -1076,7 +1258,14 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
                   items={albums.length > 0 ? albums.map(a => ({
                     label: a.name,
                     value: a.id,
-                    onClick: () => { toast({ title: `Added to "${a.name}"`, variant: 'success' }); closeContextMenu() },
+                    onClick: () => {
+                      apiFetch(`/api/v1/photos/batch/move`, {
+                        method: 'POST',
+                        body: JSON.stringify({ photo_ids: [contextMenu.photo.id], album_id: a.id }),
+                      }).then(() => { toast({ title: `Added to "${a.name}"`, variant: 'success' }); setRefreshTick(t => t + 1) })
+                        .catch(() => toast({ title: 'Could not move photo', variant: 'error' }))
+                      closeContextMenu()
+                    },
                   })) : [{ label: 'No albums', value: 'none', onClick: () => {} }]}
                 />
                 <Dropdown
@@ -1090,7 +1279,14 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
                   items={folders.length > 0 ? folders.map(f => ({
                     label: f.name,
                     value: f.id,
-                    onClick: () => { toast({ title: `Moved to "${f.name}"`, variant: 'success' }); closeContextMenu() },
+                    onClick: () => {
+                      apiFetch(`/api/v1/photos/batch/move`, {
+                        method: 'POST',
+                        body: JSON.stringify({ photo_ids: [contextMenu.photo.id], folder_id: f.id }),
+                      }).then(() => { toast({ title: `Moved to "${f.name}"`, variant: 'success' }); setRefreshTick(t => t + 1) })
+                        .catch(() => toast({ title: 'Could not move photo', variant: 'error' }))
+                      closeContextMenu()
+                    },
                   })) : [{ label: 'No folders', value: 'none', onClick: () => {} }]}
                 />
                 <div className="mx-3 my-1 border-t border-border" />

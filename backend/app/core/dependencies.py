@@ -16,11 +16,11 @@ get_db_session = get_db
 
 
 async def get_current_user(
-    authorization: str = Header(..., alias="Authorization"),
+    authorization: str | None = Header(default=None, alias="Authorization"),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict[str, Any]:
-    if not authorization.startswith("Bearer "):
-        raise UnauthorizedError(message="Invalid authorization header format")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise UnauthorizedError(message="Missing or invalid authorization header")
     token = authorization.removeprefix("Bearer ")
     try:
         payload = decode_token(token)

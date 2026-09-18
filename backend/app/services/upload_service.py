@@ -15,7 +15,7 @@ from app.repositories.photo_repository import PhotoRepository
 from app.repositories.wedding_repository import WeddingRepository
 from app.schemas.common import SuccessResponse
 from app.schemas.photo import PhotoResponse
-from app.schemas.upload import FileAllocation, UploadInitResponse, UploadProgressResponse
+from app.schemas.upload import FileAllocation, UploadCompleteRequest, UploadInitResponse, UploadProgressResponse
 from app.services.image_service import ImageProcessingService
 
 logger = logging.getLogger(__name__)
@@ -245,6 +245,40 @@ class UploadService:
                     logger.warning("Failed to clean up orphan media: %s", orphan)
             logger.error("Upload processing failed: %s", e)
             raise
+
+    async def complete_upload(
+        self, upload_id: str, data: UploadCompleteRequest, current_user: dict
+    ) -> UploadProgressResponse:
+        """Mark a file as complete and return the session progress.
+
+        The photo is created during ``upload_file``, so this endpoint only
+        finalizes the session accounting and reports progress.
+        """
+        session = self._sessions.get(upload_id)
+        if not session:
+            raise NotFoundError(message="Upload session not found")
+
+        expected = {f["file_id"] for f in session.get("files", [])}
+        if data.file_id not in expected:
+            raise ValidationError(message="File not part of this upload session")
+
+        if data.status == "completed":
+            session["completed"].add(data.file_id)
+        elif data.status == "failed":
+            session["failed"].add(data.file_id)
+
+        total = len(expected)
+        completed = len(session["completed"])
+        failed = len(session["failed"])
+        percent = (completed + failed) / total * 100 if total > 0 else 0
+        logger.info("Upload complete: %s for file %s", upload_id, data.file_id)
+        return UploadProgressResponse(
+            upload_id=upload_id,
+            total_files=total,
+            completed=completed,
+            failed=failed,
+            progress_percent=round(percent, 2),
+        )
 
     async def get_progress(self, upload_id: str, current_user: dict) -> UploadProgressResponse:
         session = self._sessions.get(upload_id)

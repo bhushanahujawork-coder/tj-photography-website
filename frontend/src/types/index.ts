@@ -53,6 +53,7 @@ export interface TimelineStep {
 export interface PortfolioImage {
   id: string
   src: string
+  gridSrc?: string
   alt: string
   width: number
   height: number

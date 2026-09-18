@@ -2,6 +2,64 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const USE_MOCK = process.env.NEXT_PUBLIC_MOCK_API === 'true'
 
 /**
+ * Guest share-gallery session lives under its own localStorage key so it can
+ * never collide with (or overwrite) the photographer's platform session.
+ */
+export const GUEST_AUTH_KEY = 'share-auth'
+
+export interface StoredSession {
+  token: string
+  refreshToken?: string
+  expiresAt?: string
+  user?: { id?: string; name?: string; phone?: string } | null
+}
+
+function readStored(key: string): StoredSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const stored = localStorage.getItem(key)
+    if (!stored) return null
+    return JSON.parse(stored) as StoredSession
+  } catch {
+    return null
+  }
+}
+
+export function getStoredAuth(key: string = 'auth'): StoredSession | null {
+  return readStored(key)
+}
+
+export function setStoredAuth(key: string, session: StoredSession): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(key, JSON.stringify(session))
+  } catch { }
+}
+
+export function clearStoredAuth(key: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(key)
+  } catch { }
+}
+
+export function getGuestSession(): StoredSession | null {
+  return readStored(GUEST_AUTH_KEY)
+}
+
+export function setGuestSession(session: StoredSession): void {
+  setStoredAuth(GUEST_AUTH_KEY, session)
+}
+
+export function clearGuestSession(): void {
+  clearStoredAuth(GUEST_AUTH_KEY)
+}
+
+export function getGuestToken(): string | null {
+  return getGuestSession()?.token || null
+}
+
+/**
  * Absolute origin the backend is served from. Used to turn relative media
  * paths (e.g. `/api/v1/media/share/{code}/photos/{id}/content`) into fully
  * qualified image URLs that can be streamed from a public share gallery.
@@ -17,14 +75,10 @@ export function mediaUrl(path: string): string {
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null
-  try {
-    const stored = localStorage.getItem('auth')
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      return parsed.token || null
-    }
-  } catch { }
-  return null
+  const platform = readStored('auth')
+  if (platform?.token) return platform.token
+  const guest = readStored(GUEST_AUTH_KEY)
+  return guest?.token || null
 }
 
 function toCamelCase(key: string): string {
@@ -50,14 +104,27 @@ export class ApiError extends Error {
   status: number
   body: string
   backendMessage: string
+  code?: string
 
-  constructor(url: string, status: number, body: string, backendMessage: string) {
+  constructor(url: string, status: number, body: string, backendMessage: string, code?: string) {
     super(backendMessage)
     this.name = 'ApiError'
     this.url = url
     this.status = status
     this.body = body
     this.backendMessage = backendMessage
+    this.code = code
+  }
+}
+
+function parseErrorBody(body: string, fallback: string): { message: string; code?: string } {
+  try {
+    const parsed = JSON.parse(body)
+    const message = parsed.error?.message || parsed.detail || parsed.message || fallback
+    const code = parsed.error?.code || parsed.code
+    return { message, code }
+  } catch {
+    return { message: body || fallback }
   }
 }
 
@@ -91,18 +158,12 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const body = await res.text()
-    let backendMessage: string
-    try {
-      const parsed = JSON.parse(body)
-      backendMessage = parsed.error?.message || parsed.detail || parsed.message || res.statusText
-    } catch {
-      backendMessage = body || res.statusText
-    }
-    const err = new ApiError(url, res.status, body, backendMessage)
+    const { message, code } = parseErrorBody(body, res.statusText)
+    const err = new ApiError(url, res.status, body, message, code)
     console.error(`[apiFetch] ${res.status} ${res.statusText} — ${path}`)
     console.error(`  URL:       ${url}`)
     console.error(`  Status:    ${res.status} ${res.statusText}`)
-    console.error(`  Message:   ${backendMessage}`)
+    console.error(`  Message:   ${message}`)
     console.error(`  Body:      ${body}`)
     console.error(`  Stack:     ${err.stack}`)
     throw err
@@ -198,24 +259,20 @@ export function apiFetchWithProgress(
  * session token attached. Used instead of a plain `<img>`/anchor for
  * authorized media routes that must never expose their bytes anonymously.
  */
-export async function apiFetchBlob(path: string): Promise<Blob> {
+export async function apiFetchBlob(path: string, headers: Record<string, string> = {}): Promise<Blob> {
   const token = getToken()
+  const merged = { ...headers }
+  if (token) merged['Authorization'] = `Bearer ${token}`
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: merged,
   })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
-    let backendMessage: string
-    try {
-      const parsed = JSON.parse(body)
-      backendMessage = parsed.error?.message || parsed.detail || parsed.message || res.statusText
-    } catch {
-      backendMessage = body || res.statusText
-    }
-    const err = new ApiError(`${API_BASE}${path}`, res.status, body, backendMessage)
+    const { message, code } = parseErrorBody(body, res.statusText)
+    const err = new ApiError(`${API_BASE}${path}`, res.status, body, message, code)
     console.error(`[apiFetch] ${res.status} ${res.statusText} — ${path}`)
     console.error(`  URL:     ${API_BASE}${path}`)
-    console.error(`  Message: ${backendMessage}`)
+    console.error(`  Message: ${message}`)
     throw err
   }
   return res.blob()

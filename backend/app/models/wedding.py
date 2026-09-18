@@ -71,6 +71,11 @@ class Wedding(BaseModel):
         back_populates="wedding",
         cascade="all, delete-orphan",
     )
+    face_profiles = relationship(
+        "FaceProfile",
+        back_populates="wedding",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_wedding_photographer_id", "photographer_id"),

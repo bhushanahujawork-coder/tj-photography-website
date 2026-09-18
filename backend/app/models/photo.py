@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String, true
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -45,6 +45,7 @@ class Photo(BaseModel):
     is_hidden = Column(Boolean, default=False, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    download_enabled = Column(Boolean, default=True, server_default=true(), nullable=False)
     uploaded_by = Column(
         String,
         ForeignKey("user.id", ondelete="SET NULL"),
@@ -56,6 +57,16 @@ class Photo(BaseModel):
     album = relationship("Album", back_populates="photos")
     folder = relationship("Folder", back_populates="photos")
     uploader = relationship("User", back_populates="uploaded_photos")
+    reactions = relationship(
+        "PhotoReaction",
+        back_populates="photo",
+        cascade="all, delete-orphan",
+    )
+    face_profiles = relationship(
+        "FaceProfile",
+        back_populates="photo",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_photo_wedding_id", "wedding_id"),

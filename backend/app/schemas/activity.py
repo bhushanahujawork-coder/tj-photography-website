@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from app.models.activity import Activity
 
 
 class ActivityResponse(BaseModel):
@@ -13,6 +15,23 @@ class ActivityResponse(BaseModel):
     type: str = Field(description="Activity type category")
     metadata: Optional[dict] = Field(default=None, description="Additional activity metadata")
     created_at: datetime = Field(description="Activity timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_orm(cls, data):
+        if isinstance(data, Activity):
+            return {
+                "id": data.id,
+                "wedding_id": data.wedding_id,
+                "user_id": data.user_id,
+                "user_name": None,
+                "action": data.action,
+                "description": data.description,
+                "type": data.type,
+                "metadata": data._metadata,
+                "created_at": data.created_at,
+            }
+        return data
 
     model_config = {"from_attributes": True}
 

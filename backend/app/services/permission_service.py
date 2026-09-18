@@ -20,6 +20,18 @@ _DEFAULT_PERMISSIONS: dict[str, list[str]] = {
     "photographer": ["view", "download", "upload", "edit", "delete", "share"],
 }
 
+_ALL_PERMISSIONS: list[str] = sorted(p.value for p in PermissionType)
+
+
+def _to_boolean_matrix(permission_lists: dict[str, list[str]]) -> dict[str, dict[str, bool]]:
+    return {
+        role: {
+            perm: perm in permission_lists.get(role, [])
+            for perm in _ALL_PERMISSIONS
+        }
+        for role in _DEFAULT_PERMISSIONS
+    }
+
 
 class PermissionService:
     def __init__(self, db: AsyncSession):
@@ -30,20 +42,19 @@ class PermissionService:
         self, wedding_id: str, current_user: dict,
     ) -> PermissionMatrixResponse:
         permissions = await self.repo.get_by_wedding(wedding_id)
-        matrix: dict[str, list[str]] = {}
+        matrix: dict[str, list[str]] = {
+            role: list(defaults)
+            for role, defaults in _DEFAULT_PERMISSIONS.items()
+        }
         for p in permissions:
-            if p.role not in matrix:
-                matrix[p.role] = []
-            if p.allowed:
-                matrix[p.role].append(p.permission)
-
-        for role, defaults in _DEFAULT_PERMISSIONS.items():
-            if role not in matrix:
-                matrix[role] = defaults
+            if p.allowed and p.permission not in matrix.get(p.role, []):
+                matrix.setdefault(p.role, []).append(p.permission)
+            elif not p.allowed and p.permission in matrix.get(p.role, []):
+                matrix[p.role].remove(p.permission)
 
         return PermissionMatrixResponse(
             wedding_id=wedding_id,
-            permissions=matrix,
+            matrix=_to_boolean_matrix(matrix),
         )
 
     async def has_permission(self, wedding_id: str, role: str, permission: str) -> bool:
@@ -65,18 +76,18 @@ class PermissionService:
         self, wedding_id: str, request: PermissionUpdateRequest,
         current_user: dict,
     ) -> PermissionMatrixResponse:
-        for entry in request.permissions:
+        for permission, allowed in request.permissions.items():
             existing = await self.repo.get_by_wedding_role_permission(
-                wedding_id, entry.role, entry.permission,
+                wedding_id, request.role, permission,
             )
             if existing:
-                await self.repo.update(existing.id, allowed=entry.allowed)
+                await self.repo.update(existing.id, allowed=allowed)
             else:
                 await self.repo.create(
                     wedding_id=wedding_id,
-                    role=entry.role,
-                    permission=entry.permission,
-                    allowed=entry.allowed,
+                    role=request.role,
+                    permission=permission,
+                    allowed=allowed,
                 )
 
         logger.info(
@@ -89,5 +100,5 @@ class PermissionService:
         self, wedding_id: str, current_user: dict,
     ) -> DefaultPermissionsResponse:
         return DefaultPermissionsResponse(
-            defaults=_DEFAULT_PERMISSIONS,
+            defaults=_to_boolean_matrix(_DEFAULT_PERMISSIONS),
         )

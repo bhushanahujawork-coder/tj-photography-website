@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from httpx import AsyncClient
 
-from tests.test_authz_security import _upload_photo
+from tests.test_authz_security import _create_album, _upload_photo
 from tests.test_share_security import _create_share_link
 from tests.test_uploads_security import _create_wedding
 
@@ -21,6 +21,10 @@ async def _share_gallery(client: AsyncClient, code: str):
 
 async def _share_photos(client: AsyncClient, code: str, **params):
     return await client.get(f"/api/v1/share/{code}/photos", params=params)
+
+
+async def _share_albums(client: AsyncClient, code: str, **headers):
+    return await client.get(f"/api/v1/share/{code}/albums", headers=headers)
 
 
 @pytest.mark.asyncio
@@ -195,4 +199,97 @@ async def test_share_photos_unknown_code_404(
     client: AsyncClient, test_users, photographer_headers
 ):
     resp = await _share_photos(client, "NO-SUCH-CODE")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_share_albums_lists_visible_counts_with_cover(
+    client: AsyncClient, test_users, photographer_headers
+):
+    wedding_id = await _create_wedding(client, photographer_headers)
+    album_id = await _create_album(client, photographer_headers, wedding_id, name="Mehndi")
+
+    visible = await _upload_photo(client, photographer_headers, wedding_id)
+    moved = await client.put(
+        f"/api/v1/photos/{visible}",
+        json={"album_id": album_id},
+        headers=photographer_headers,
+    )
+    assert moved.status_code == 200
+
+    hidden = await _upload_photo(client, photographer_headers, wedding_id)
+    hmoved = await client.put(
+        f"/api/v1/photos/{hidden}",
+        json={"album_id": album_id, "is_hidden": True},
+        headers=photographer_headers,
+    )
+    assert hmoved.status_code == 200
+
+    create = await _create_share_link(client, photographer_headers, wedding_id)
+    assert create.status_code == 201
+    code = create.json()["code"]
+
+    resp = await _share_albums(client, code)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    album = body[0]
+    assert album["id"] == album_id
+    assert album["name"] == "Mehndi"
+    assert album["photo_count"] == 1
+    assert album["sort_order"] == 0
+    assert album["cover_url"].startswith(f"/api/v1/media/share/{code}/photos/")
+    assert "size=thumbnail" in album["cover_url"]
+
+
+@pytest.mark.asyncio
+async def test_share_albums_scoped_to_wedding(
+    client: AsyncClient, test_users, photographer_headers
+):
+    w1 = await _create_wedding(client, photographer_headers)
+    w2 = await _create_wedding(client, photographer_headers)
+    w1_album = await _create_album(client, photographer_headers, w1, name="Wedding")
+    await _create_album(client, photographer_headers, w2, name="Other")
+
+    photo = await _upload_photo(client, photographer_headers, w1)
+    moved = await client.put(
+        f"/api/v1/photos/{photo}",
+        json={"album_id": w1_album},
+        headers=photographer_headers,
+    )
+    assert moved.status_code == 200
+
+    create = await _create_share_link(client, photographer_headers, w1)
+    assert create.status_code == 201
+
+    resp = await _share_albums(client, create.json()["code"])
+    assert resp.status_code == 200
+    albums = resp.json()
+    assert len(albums) == 1
+    assert albums[0]["id"] == w1_album
+    assert albums[0]["name"] == "Wedding"
+
+
+@pytest.mark.asyncio
+async def test_share_albums_unknown_code_404(
+    client: AsyncClient, test_users, photographer_headers
+):
+    resp = await _share_albums(client, "NO-SUCH-CODE")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_share_albums_expired_404(
+    client: AsyncClient, test_users, photographer_headers
+):
+    wedding_id = await _create_wedding(client, photographer_headers)
+    await _create_album(client, photographer_headers, wedding_id, name="Mehndi")
+
+    past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    create = await _create_share_link(
+        client, photographer_headers, wedding_id, expires_at=past
+    )
+    assert create.status_code == 201
+
+    resp = await _share_albums(client, create.json()["code"])
     assert resp.status_code == 404

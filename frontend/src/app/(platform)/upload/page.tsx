@@ -114,14 +114,14 @@ export default function UploadPage() {
 
   async function fetchAlbums(wId: string) {
     try {
-      const data = await apiFetch<{ id: string; name: string }[]>(`/api/v1/weddings/${wId}/albums`)
+      const data = await apiFetch<{ id: string; name: string }[]>(`/api/v1/weddings/${wId}/albums/`)
       setAlbums(data.map(a => ({ id: a.id, name: a.name, weddingId: wId })))
     } catch { setAlbums([]) }
   }
 
   async function fetchFolders(wId: string) {
     try {
-      const data = await apiFetch<{ id: string; name: string }[]>(`/api/v1/weddings/${wId}/folders`)
+      const data = await apiFetch<{ id: string; name: string }[]>(`/api/v1/weddings/${wId}/folders/`)
       setFolders(data.map(f => ({ id: f.id, name: f.name, weddingId: wId })))
     } catch { setFolders([]) }
   }
