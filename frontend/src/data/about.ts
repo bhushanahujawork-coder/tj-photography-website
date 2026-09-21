@@ -14,11 +14,11 @@ export const about = {
       'TJ Photography is a wedding studio based in Jamnagar, trusted by couples across Gujarat. We believe a wedding is not just a ceremony — it is the most important story of your life, and it deserves to be told properly.',
       'That is why we never follow templates. Every wedding gets its own treatment — cinematic films, fine art albums and online galleries your family will revisit for years. We arrive early, stay till the last dance, and capture every moment exactly as it felt.',
     ],
-    image: '/studio/studio-1.svg',
-    imageAlt: 'TJ Photography studio',
+    image: '/portfolio/dhariya-shruti/gallery/ds-01.webp',
+    imageAlt: 'TJ Photography wedding work — Dhariya and Shruti',
     polaroids: [
-      { src: '/studio/studio-2.svg', alt: 'TJ Photography studio' },
-      { src: '/studio/studio-3.svg', alt: 'TJ Photography studio' },
+      { src: '/portfolio/dhariya-shruti/gallery/ds-05.webp', alt: 'TJ Photography wedding work' },
+      { src: '/portfolio/dhariya-shruti/gallery/ds-08.webp', alt: 'TJ Photography wedding work' },
     ],
     stats: [
       { value: '500+', label: 'Weddings Shot' },

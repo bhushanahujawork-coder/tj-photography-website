@@ -153,21 +153,24 @@ class UploadService:
 
             uploader_id = current_user.get("sub")
 
-            photo = await self.photo_repo.create(
-                wedding_id=wedding_id,
-                album_id=session.get("album_id"),
-                folder_id=session.get("folder_id"),
-                filename=filename,
-                original_path=processed.get("original", storage_path),
-                medium_path=processed.get("medium"),
-                thumbnail_path=processed.get("thumbnail"),
-                blur_hash=processed.get("blur_hash"),
-                width=processed.get("width"),
-                height=processed.get("height"),
-                file_size=processed.get("file_size", len(file_data)),
-                content_type=content_type,
-                exif_data=exif_data or None,
-                uploaded_by=uploader_id,
+            photo = await self.photo_repo.create_from_upload(
+                {
+                    "wedding_id": wedding_id,
+                    "album_id": session.get("album_id"),
+                    "folder_id": session.get("folder_id"),
+                    "filename": filename,
+                    "original_path": processed.get("original", storage_path),
+                    "medium_path": processed.get("medium"),
+                    "thumbnail_path": processed.get("thumbnail"),
+                    "blur_hash": processed.get("blur_hash"),
+                    "width": processed.get("width"),
+                    "height": processed.get("height"),
+                    "file_size": processed.get("file_size", len(file_data)),
+                    "content_type": content_type,
+                    "exif_data": exif_data or None,
+                    "uploaded_by": uploader_id,
+                },
+                created_by={"sub": uploader_id},
             )
 
             if exif_data:

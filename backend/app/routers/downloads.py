@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, Query, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -170,3 +170,26 @@ async def verify_share_pin(
 ) -> PinVerifyResponse:
     valid = await download_service.verify_share_pin(code, request.pin)
     return PinVerifyResponse(valid=valid, code=code)
+
+
+@router.get(
+    "/share/{code}/photos/download",
+    operation_id="share_photos_download",
+    summary="Download multiple share-gallery photos as a ZIP of PNGs (public, share-scoped)",
+)
+async def download_share_photos(
+    code: str,
+    photo_ids: str = Query(..., description="Comma-separated photo IDs"),
+    gallery_pin: str | None = Header(default=None, alias="X-Gallery-Pin"),
+    current_user: dict | None = Depends(get_optional_user),
+    download_service: DownloadService = Depends(get_download_service),
+) -> Response:
+    ids = [pid.strip() for pid in photo_ids.split(",") if pid.strip()]
+    zip_bytes, zip_name = await download_service.download_share_zip(
+        code, ids, current_user, gallery_pin,
+    )
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_name}"'},
+    )

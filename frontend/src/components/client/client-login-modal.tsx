@@ -17,7 +17,7 @@ import { apiFetch, setGuestSession } from '@/lib/api'
  * wedding (share link); otherwise the backend auto-links any participant
  * invitation rows carrying the phone number.
  */
-export default function GuestLoginModal({ open, onClose, onAuthed, livenessRequired = false, shareCode }: {
+export default function ClientLoginModal({ open, onClose, onAuthed, livenessRequired = false, shareCode }: {
   open: boolean
   onClose: () => void
   onAuthed: () => void

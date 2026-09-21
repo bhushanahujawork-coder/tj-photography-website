@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useHomeConfig } from '@/lib/home-config/client'
 import { ToastProvider } from '@/hooks/use-toast'
-import GuestLoginModal from '@/components/client/guest-login-modal'
+import ClientLoginModal from '@/components/client/client-login-modal'
 
 export default function Navbar() {
   const { config } = useHomeConfig()
@@ -181,7 +181,7 @@ export default function Navbar() {
           Client Login
         </button>
       </nav>
-      <GuestLoginModal
+      <ClientLoginModal
         open={clientLoginOpen}
         onClose={() => setClientLoginOpen(false)}
         onAuthed={handleClientAuthed}

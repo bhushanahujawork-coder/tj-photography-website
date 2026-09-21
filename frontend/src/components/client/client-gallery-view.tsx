@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Toaster } from '@/components/ui/toast'
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch, apiFetchBlob, mediaUrl, getGuestSession, setGuestSession, clearGuestSession, type ApiError } from '@/lib/api'
-import GuestLoginModal from './guest-login-modal'
+import ClientLoginModal from './client-login-modal'
 
 interface ClientPhoto {
   id: string
@@ -26,6 +26,8 @@ interface ClientPhoto {
   mediumPath: string
   thumbnailPath: string
   originalPath: string
+  albumId?: string | null
+  downloadEnabled: boolean
 }
 
 interface BackendPhoto {
@@ -42,6 +44,8 @@ interface BackendPhoto {
   originalUrl?: string | null
   mediumUrl?: string | null
   thumbnailUrl?: string | null
+  albumId?: string | null
+  downloadEnabled?: boolean
 }
 
 interface WeddingInfo {
@@ -190,6 +194,8 @@ function mapClientPhoto(p: BackendPhoto): ClientPhoto {
     mediumPath: p.mediumUrl || p.originalUrl || '',
     thumbnailPath: p.thumbnailUrl || p.mediumUrl || '',
     originalPath: p.originalUrl || p.mediumUrl || '',
+    albumId: p.albumId ?? null,
+    downloadEnabled: p.downloadEnabled !== false,
   }
 }
 
@@ -214,6 +220,7 @@ interface ShareAlbum {
   description?: string | null
   photoCount: number
   coverUrl?: string | null
+  downloadEnabled: boolean
 }
 
 export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: string; weddingCode?: string }) {
@@ -307,6 +314,7 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
             description: a.description ?? null,
             photoCount: a.photoCount ?? 0,
             coverUrl: a.coverUrl ?? null,
+            downloadEnabled: a.downloadEnabled !== false,
           })))
         } else if (weddingCode) {
           const w = await apiFetch<WeddingInfo>(`/api/v1/weddings/by-code/${weddingCode}`)
@@ -322,6 +330,7 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
             description: a.description ?? null,
             photoCount: a.photoCount ?? 0,
             coverUrl: a.coverUrl ?? null,
+            downloadEnabled: a.downloadEnabled !== false,
           })))
         }
       } catch (e) {
@@ -1032,7 +1041,7 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
           />
         )}
       </AnimatePresence>
-    <GuestLoginModal
+    <ClientLoginModal
         open={guestOpen}
         shareCode={isShare ? shareCode : undefined}
         onClose={() => setGuestOpen(false)}

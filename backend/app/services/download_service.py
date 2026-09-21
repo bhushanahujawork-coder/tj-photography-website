@@ -12,6 +12,7 @@ from app.core.security import generate_share_token
 from app.core.storage import get_storage
 from app.models.album import Album
 from app.models.photo import Photo
+from app.repositories.album_repository import AlbumRepository
 from app.repositories.download_repository import DownloadRepository
 from app.repositories.photo_repository import PhotoRepository
 from app.repositories.share_link_repository import ShareLinkRepository
@@ -437,6 +438,68 @@ class DownloadService:
                 photo_count=counts.get(album.id, 0),
                 sort_order=album.sort_order,
                 cover_url=_cover_url(album),
+                download_enabled=bool(album.download_enabled),
             )
             for album in albums
         ]
+
+    async def _share_photo_downloadable(self, link, photo) -> bool:
+        """Photo-level download gate for share galleries.
+
+        Enforces the same hierarchy the media route uses: the photo's own
+        ``download_enabled`` flag AND its album's flag (when assigned). The
+        link/gallery-level gate is validated once by the caller.
+        """
+        if not photo.download_enabled:
+            return False
+        if photo.album_id:
+            album = await AlbumRepository(self.db).get(photo.album_id)
+            if album and not album.download_enabled:
+                return False
+        return True
+
+    async def download_share_zip(
+        self,
+        code: str,
+        photo_ids: list[str],
+        current_user: dict | None = None,
+        gallery_pin: str | None = None,
+    ) -> tuple[bytes, str]:
+        """Build a ZIP of PNG originals for a public share gallery.
+
+        Access requires an active share link, satisfied PIN/anonymous policy,
+        and the link role holding the ``download`` permission. Photos that are
+        deleted, hidden (client/guest roles), belong to another wedding, or are
+        download-disabled at photo/album level are silently skipped, so a
+        revoked photo can never leak through a ZIP.
+        """
+        link = await self.get_active_share_link(code)
+        await self.enforce_share_access(link, current_user=current_user, gallery_pin=gallery_pin)
+
+        allowed = link.download_enabled and await self.share_role_has_permission(link, "download")
+        if not allowed:
+            raise ForbiddenError(message="Download not permitted for this gallery")
+
+        image_svc = ImageProcessingService()
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for photo_id in photo_ids:
+                photo = await PhotoRepository(self.db).get(photo_id)
+                if not photo or photo.is_deleted or photo.wedding_id != link.wedding_id:
+                    continue
+                if link.role in ("client", "guest") and photo.is_hidden:
+                    continue
+                if not await self._share_photo_downloadable(link, photo):
+                    continue
+                result = await image_svc.convert_to_png(photo.original_path)
+                if result:
+                    png_bytes, png_name = result
+                    zf.writestr(png_name, png_bytes)
+
+        zip_bytes = buf.getvalue()
+        zip_name = (
+            f"tjphotography_{link.wedding_id}_"
+            f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.zip"
+        )
+        logger.info("Share ZIP built for %s (%d bytes)", code, len(zip_bytes))
+        return zip_bytes, zip_name

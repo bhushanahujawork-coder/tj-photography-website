@@ -4,10 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Icon } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch, clearGuestSession, getGuestSession, type ApiError } from '@/lib/api'
-import GuestLoginModal from '@/components/client/guest-login-modal'
+import ClientLoginModal from '@/components/client/client-login-modal'
 
 interface ClientGallery {
   id: string
@@ -37,9 +36,6 @@ export default function ClientDashboard() {
     setLoading(true)
     setError(null)
     try {
-      if (!authed) return
-      setLoading(true)
-      setError(null)
       const res = await apiFetch<unknown>(`/api/v1/client/galleries`)
       const raw = Array.isArray(res) ? (res as Array<Record<string, unknown>>) : []
       const normalized = raw.map((r) => ({
@@ -54,9 +50,8 @@ export default function ClientDashboard() {
       setAuthed(true)
     } catch (e) {
       const err = e as ApiError
-      const separate = err?.code === 'UNAUTHORIZED'
       setError(err?.backendMessage ?? 'Could not load your galleries.')
-      if (separate) {
+      if (err?.status === 401 || err?.code === 'unauthorized') {
         clearGuestSession()
         setAuthed(false)
       }
@@ -76,7 +71,7 @@ export default function ClientDashboard() {
 
   const handleSignOut = async () => {
     try {
-      await apiFetch('/api/v1/auth/logout/guest', { method: 'POST' })
+      await apiFetch('/api/v1/auth/logout', { method: 'POST' })
     } catch {
       // ignore — local session clear always runs
     }
@@ -185,7 +180,7 @@ export default function ClientDashboard() {
         )}
       </div>
 
-      <GuestLoginModal
+      <ClientLoginModal
         open={loginOpen}
         onClose={() => setLoginOpen(false)}
         onAuthed={handleAuthed}

@@ -95,6 +95,7 @@ class ShareAlbumResponse(BaseModel):
     photo_count: int = Field(ge=0, description="Number of visible photos in the album")
     sort_order: int = Field(default=0, description="Display sort order")
     cover_url: Optional[str] = Field(default=None, description="Share-scoped cover thumbnail URL")
+    download_enabled: bool = Field(default=True, description="Whether downloads are enabled for this album")
 
     model_config = {"from_attributes": True}
 

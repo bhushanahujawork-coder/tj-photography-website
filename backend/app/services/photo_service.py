@@ -223,7 +223,7 @@ class PhotoService:
             pages=pages,
         )
 
-    async def create_from_upload(self, data: dict) -> PhotoResponse:
+    async def create_from_upload(self, data: dict, created_by: dict | None = None) -> PhotoResponse:
         photo = await self.photo_repo.create(**data)
         logger.info("Photo created: %s", photo.id)
 
@@ -246,6 +246,26 @@ class PhotoService:
                 await self.folder_repo.update(
                     photo.folder_id, photo_count=folder.photo_count + 1,
                 )
+
+        # Register face profile from photo (offline Pillow heuristic, no GPU needed)
+        if created_by:
+            from app.services.face_service import FaceService
+            from app.core.dependencies import get_db_session
+
+            async with get_db_session() as session:
+                face_service = FaceService(session)
+                try:
+                    raw = await self.photo_repo.get_storage().read(photo.original_path)
+                    if raw:
+                        await face_service.register_photo_face(
+                            photo_id=photo.id,
+                            label=None,
+                            face_box=None,
+                            created_by=created_by,
+                        )
+                        logger.info("Face profile auto-registered for photo: %s", photo.id)
+                except Exception as e:
+                    logger.warning("Face profile registration failed for photo %s: %s", photo.id, e)
 
         return self._photo_to_response(photo)
 
