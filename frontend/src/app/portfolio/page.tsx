@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import Navbar from '@/components/home/navbar'
 import Footer from '@/components/home/footer'
 import { Lightbox } from '@/components/ui/lightbox'
@@ -66,25 +65,7 @@ export default function PortfolioGalleryPage() {
     <HomeConfigProvider>
       <Navbar />
       <main className="bg-[#eae1d2]">
-        <div className="mx-auto max-w-7xl px-6 pb-10 pt-24 text-center md:pt-28 2xl:max-w-[1400px]">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 font-[var(--font-poppins)] text-[11px] uppercase tracking-[0.22em] text-[#161616]/50 transition-colors duration-300 hover:text-gold"
-          >
-            <span aria-hidden="true">←</span> Back to Home
-          </Link>
-          <p className="mt-6 font-[var(--font-poppins)] text-[11px] uppercase tracking-[0.3em] text-gold">
-            Portfolio
-          </p>
-          <h1 className="mt-3 font-serif text-4xl text-[#161616] md:text-5xl">
-            Selected Wedding Stories
-          </h1>
-          <p className="mt-3 text-sm text-[#161616]/60">
-            {portfolio.length} photographs — click any frame to view
-          </p>
-        </div>
-
-        <div className="columns-2 md:columns-3 xl:columns-4 gap-[2px]">
+        <div className="columns-2 md:columns-3 xl:columns-4 gap-[2px] pt-16 md:pt-20">
           {portfolio.map((image) => (
             <PortfolioThumb key={image.id} image={image} onOpen={() => openImage(image.id)} />
           ))}
