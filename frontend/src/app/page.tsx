@@ -23,9 +23,28 @@ export const metadata: Metadata = {
 }
 
 export default function Home() {
+  const businessSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ProfessionalService',
+    name: 'TJ Photography',
+    description:
+      'Premium wedding photography studio in Jamnagar, Gujarat. Cinematic wedding films, fine art albums and private online galleries.',
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Jamnagar',
+      addressRegion: 'Gujarat',
+      addressCountry: 'IN',
+    },
+    areaServed: 'Gujarat, India',
+  }
+
   return (
     <HomeConfigProvider>
       <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(businessSchema) }}
+        />
         <ScrollProgress />
         <Navbar />
         <main>
