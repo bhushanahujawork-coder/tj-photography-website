@@ -19,7 +19,7 @@ export default function PortfolioGalleryPage() {
     <HomeConfigProvider>
       <Navbar />
       <main className="bg-[#eae1d2]">
-        <div className="columns-2 md:columns-3 xl:columns-4 gap-[2px] pt-20 md:pt-24 -mt-px">
+        <div className="columns-2 md:columns-3 xl:columns-4 gap-[2px] pt-16 md:pt-20">
           {portfolio.map((image) => (
             <button
               key={image.id}

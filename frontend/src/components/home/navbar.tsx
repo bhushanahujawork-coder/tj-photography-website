@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useHomeConfig } from '@/lib/home-config/client'
 import { ToastProvider } from '@/hooks/use-toast'
 import ClientLoginModal from '@/components/client/client-login-modal'
@@ -13,11 +13,16 @@ export default function Navbar() {
   const { config } = useHomeConfig()
   const header = config.header
   const router = useRouter()
+  const pathname = usePathname()
+  /* Inner pages (no fullscreen hero) start solid + compact so the header
+     never morphs mid-scroll — that morph is what looked "weird".
+     Home ("/") starts transparent + tall for the cinematic hero. */
+  const isHome = pathname === '/'
   const [activeSection, setActiveSection] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [clientLoginOpen, setClientLoginOpen] = useState(false)
-  const [solid, setSolid] = useState(false)
-  const [compact, setCompact] = useState(false)
+  const [solid, setSolid] = useState(!isHome)
+  const [compact, setCompact] = useState(!isHome)
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -26,38 +31,48 @@ export default function Navbar() {
     history.scrollRestoration = 'manual'
   }, [])
 
-  /* Compact mode: single scroll shrinks the whole header bar + logo. */
+  /* Single rAF-throttled scroll listener. Hero pages (home/films/about):
+     transparent over the hero band, then smooth flip to solid.
+     Inner pages (portfolio etc.): header stays static — no morph on scroll. */
   useEffect(() => {
-    const onScroll = () => setCompact(window.scrollY > 60)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  /* Solid (cream + dark) sticky header: transparent over the hero band, then
-     flips to the light solid state once ~80% of the band is scrolled past. */
-  useEffect(() => {
+    let raf = 0
     const update = () => {
-      const heroEl = document.querySelector<HTMLElement>('[data-hero]')
-      if (!heroEl) {
-        setSolid(true)
-        return
-      }
-      const threshold = heroEl.getBoundingClientRect().height * 0.8
-      setSolid(window.scrollY >= threshold)
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const heroEl = document.querySelector<HTMLElement>('[data-hero]')
+        if (!heroEl) {
+          setSolid(true)
+          setCompact(true)
+          return
+        }
+        const y = window.scrollY
+        const threshold = heroEl.getBoundingClientRect().height * 0.8
+        setSolid((prev) => {
+          const next = y >= threshold
+          return prev === next ? prev : next
+        })
+        setCompact((prev) => {
+          const next = y > 40
+          return prev === next ? prev : next
+        })
+      })
     }
-    const heroEl = document.querySelector<HTMLElement>('[data-hero]')
     update()
     window.addEventListener('scroll', update, { passive: true })
     window.addEventListener('resize', update)
-    const ro = typeof ResizeObserver !== 'undefined' && heroEl ? new ResizeObserver(update) : null
-    ro?.observe(heroEl as Element)
+    const heroEl = document.querySelector<HTMLElement>('[data-hero]')
+    const ro =
+      typeof ResizeObserver !== 'undefined' && heroEl
+        ? new ResizeObserver(update)
+        : null
+    if (heroEl && ro) ro.observe(heroEl)
     return () => {
+      cancelAnimationFrame(raf)
       window.removeEventListener('scroll', update)
       window.removeEventListener('resize', update)
       ro?.disconnect()
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -113,16 +128,17 @@ export default function Navbar() {
   return (
     <ToastProvider>
       <header
-      className="fixed top-0 left-0 right-0 z-50 transition-colors duration-300"
+      className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out"
       style={{
         background: solid ? 'var(--home-bg, #eae1d2)' : 'transparent',
-        borderBottom: solid ? '1px solid rgba(22, 22, 22, 0.08)' : 'none',
+        borderBottom: solid ? '1px solid rgba(22, 22, 22, 0.08)' : '1px solid transparent',
+        boxShadow: solid ? '0 4px 24px rgba(22, 22, 22, 0.06)' : 'none',
         textShadow: solid
           ? 'none'
           : '0 1px 10px rgba(0, 0, 0, 0.45), 0 0 2px rgba(0, 0, 0, 0.3)',
       }}
     >
-      <div className={`relative transition-[height] duration-500 ease-out ${compact ? 'h-14 md:h-16' : 'h-20 md:h-24'}`}>
+      <div className={`relative transition-[height] duration-300 ease-out ${compact ? 'h-16 md:h-20' : 'h-20 md:h-24'}`}>
         <div
           data-editor="logo"
           className="absolute top-0 z-10 flex h-full items-center min-w-0"
@@ -143,14 +159,14 @@ export default function Navbar() {
               width={3268}
               height={240}
               priority
-              className="w-auto transition-[filter,width] duration-500 ease-out"
+              className="w-auto transition-[filter,transform] duration-300 ease-out"
               style={{
                 filter: solid
                   ? 'invert(1)'
                   : 'drop-shadow(0 1px 6px rgba(0, 0, 0, 0.45))',
-                width: compact
-                  ? 'calc(var(--tj-logo-width, 272px) * 0.68)'
-                  : 'var(--tj-logo-width, 272px)',
+                width: 'var(--tj-logo-width, 272px)',
+                transform: compact ? 'scale(0.82)' : 'scale(1)',
+                transformOrigin: 'left center',
                 height: 'auto',
                 maxWidth: '100%',
               }}
@@ -171,7 +187,7 @@ export default function Navbar() {
             <a
               key={link.href}
               href={link.href}
-              className={`relative font-[var(--font-poppins)] tracking-[0.18em] uppercase font-medium whitespace-nowrap transition-all duration-500 ${compact ? 'text-[10px]' : 'text-[11px] xl:text-xs'}`}
+              className="relative font-[var(--font-poppins)] tracking-[0.18em] uppercase font-medium whitespace-nowrap transition-colors duration-300 text-[11px] xl:text-xs"
               style={{ color: navColor }}
               onMouseEnter={(e) => e.currentTarget.style.color = navHover}
               onMouseLeave={(e) => e.currentTarget.style.color = navColor}
