@@ -10,7 +10,7 @@ export const metadata: Metadata = {
       'Selected wedding stories by TJ Photography, Jamnagar — cinematic frames and full wedding galleries.',
   },
   alternates: {
-    canonical: '/portfolio',
+    canonical: '/quickportfolio',
   },
 }
 

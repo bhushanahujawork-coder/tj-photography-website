@@ -21,7 +21,7 @@ export default function NotFound() {
           Back to Home
         </Link>
         <Link
-          href="/portfolio"
+          href="/quickportfolio"
           className="rounded-full border border-[#161616]/20 px-6 py-3 font-[var(--font-poppins)] text-[11px] uppercase tracking-[0.18em] text-[#161616] transition-colors duration-300 hover:border-gold hover:text-gold"
         >
           View Portfolio

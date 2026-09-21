@@ -24,6 +24,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: `${BASE}/quickportfolio`,
+      lastModified: NOW,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
       url: `${BASE}/gallery`,
       lastModified: NOW,
       changeFrequency: 'monthly',
