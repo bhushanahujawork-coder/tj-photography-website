@@ -43,6 +43,8 @@ export default function HeroSection() {
             alt={slide.alt}
             fill
             priority={i === 0}
+            fetchPriority={i === 0 ? 'high' : 'auto'}
+            quality={90}
             sizes="100vw"
             className={`object-cover ${i === current ? 'animate-kenburns' : ''}`}
             draggable={false}
