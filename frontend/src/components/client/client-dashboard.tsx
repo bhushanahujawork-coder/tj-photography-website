@@ -69,7 +69,11 @@ export default function ClientDashboard() {
   }, [])
 
   useEffect(() => {
-    void load()
+    // Defer past the synchronous effect body: `load` may setState on its
+    // synchronous path (no session), so schedule it as a microtask instead.
+    queueMicrotask(() => {
+      void load()
+    })
   }, [load])
 
   const handleAuthed = useCallback(() => {

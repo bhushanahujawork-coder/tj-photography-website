@@ -107,7 +107,7 @@ export default function ActivityPage() {
           >
             <div className="absolute left-6 top-0 bottom-0 w-px bg-border" />
             <div className="space-y-4">
-              {filteredLogs.map((log, i) => {
+              {filteredLogs.map((log) => {
                 const config = typeConfig[log.type] || { icon: 'info', color: 'text-muted bg-white/5' }
                 return (
                   <motion.div key={log.id} variants={itemVariants}>

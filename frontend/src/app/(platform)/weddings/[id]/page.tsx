@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { cn, formatDate, pluralize } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { Icon } from '@/lib/icons'
 import { Card, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -114,7 +114,7 @@ export default function WeddingDetailPage({ params }: { params: Promise<{ id: st
             <Icon name="alert-circle" size={28} className="text-muted" />
           </div>
           <h2 className="font-serif text-lg text-foreground">Wedding not found</h2>
-          <p className="mt-1 text-sm text-muted">This wedding doesn't exist or has been removed.</p>
+          <p className="mt-1 text-sm text-muted">This wedding doesn&apos;t exist or has been removed.</p>
           <Link href="/weddings">
             <Button className="mt-6" variant="outline" size="sm">
               <Icon name="arrow-left" size={16} />
@@ -321,7 +321,7 @@ export default function WeddingDetailPage({ params }: { params: Promise<{ id: st
                     />
                   </div>
                   <p className="text-xs text-muted">
-                    This group's share link PIN can be set from the Share Gallery modal.
+                    This group&apos;s share link PIN can be set from the Share Gallery modal.
                   </p>
                 </CardContent>
               ) : (

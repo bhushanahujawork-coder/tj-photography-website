@@ -13,7 +13,6 @@ import type { StorageInfo } from '@/types/platform'
 
 export default function StoragePage() {
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
@@ -22,8 +21,6 @@ export default function StoragePage() {
         setStorageInfo(data)
       } catch (e) {
         console.error('Failed to load storage info', e)
-      } finally {
-        setLoading(false)
       }
     }
     load()
@@ -32,7 +29,6 @@ export default function StoragePage() {
   const storagePercent = storageInfo ? Math.round((storageInfo.usedBytes / storageInfo.limitBytes) * 100) : 0
 
   const storageColor = storagePercent > 90 ? 'bg-red-500' : storagePercent > 70 ? 'bg-yellow-500' : 'bg-green-500'
-  const storageTextColor = storagePercent > 90 ? 'text-red-400' : storagePercent > 70 ? 'text-yellow-400' : 'text-green-400'
 
   const breakdownCards = [
     { label: 'Photos', value: storageInfo?.photoCount.toLocaleString() ?? '...', icon: 'image', color: 'text-blue-400', bg: 'bg-blue-500/10' },

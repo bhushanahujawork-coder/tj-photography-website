@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import { Icon } from '@/lib/icons'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -179,7 +178,7 @@ export default function SettingsPage() {
             <h1 className="font-serif text-3xl text-foreground">Settings</h1>
             <p className="mt-1 text-sm text-muted">Manage your application preferences</p>
           </div>
-          <Button onClick={handleSave} loading={saving}>
+          <Button onClick={handleSave} loading={saving || loading}>
             <Icon name="check" size={16} />
             Save Changes
           </Button>

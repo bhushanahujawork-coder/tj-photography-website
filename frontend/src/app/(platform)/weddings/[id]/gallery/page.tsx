@@ -5,15 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { cn, formatDate } from '@/lib/utils'
 import { Icon } from '@/lib/icons'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Tabs } from '@/components/ui/tabs'
 import { Dropdown } from '@/components/ui/dropdown'
-import { Modal } from '@/components/ui/modal'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { GallerySkeleton } from '@/components/ui/skeleton'
 import { PhotoDetailModal } from '@/components/ui/photo-detail-modal'
@@ -22,10 +19,36 @@ import { AuthGuard } from '@/components/platform/auth-guard'
 import { Breadcrumb } from '@/components/platform/breadcrumb'
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch, apiFetchBlob, mediaUrl } from '@/lib/api'
-import type { Photo, Album, Folder } from '@/types/platform'
+import type { Photo, Album, Folder, Wedding } from '@/types/platform'
 
 const PHOTOS_PER_PAGE = 20
 const PHOTOS_PER_LOAD = 12
+
+/** Raw photo shape returned by the backend (fields optional — normalized below). */
+interface ApiPhoto {
+  id: string
+  weddingId?: string
+  originalUrl?: string | null
+  mediumUrl?: string | null
+  thumbnailUrl?: string | null
+  altText?: string | null
+  filename?: string | null
+  width?: number | null
+  height?: number | null
+  blurHash?: string | null
+  favorite?: boolean
+  isHighlight?: boolean
+  createdAt?: string
+  camera?: string | null
+  lens?: string | null
+  aperture?: string | null
+  shutterSpeed?: string | null
+  iso?: number | null
+  focalLength?: string | null
+  dateTaken?: string | null
+  folderId?: string | null
+  albumId?: string | null
+}
 
 function getDateOnly(dateStr: string) {
   return dateStr.split('T')[0]
@@ -35,7 +58,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
   const { id } = use(params)
   const { toast } = useToast()
 
-  const [wedding, setWedding] = useState<any>(null)
+  const [wedding, setWedding] = useState<Wedding | null>(null)
   const [albums, setAlbums] = useState<Album[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
 
@@ -70,7 +93,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
   const [deletedPhotos, setDeletedPhotos] = useState<Photo[]>([])
   const [deletedLoading, setDeletedLoading] = useState(false)
   const [refreshTick, setRefreshTick] = useState(0)
-  const [slideshowActive, setSlideshowActive] = useState(false)
+  const [, setSlideshowActive] = useState(false)
 
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void }>({
     open: false, title: '', description: '', onConfirm: () => {},
@@ -83,38 +106,39 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
     async function loadData() {
       try {
         const [weddingData, albumsData, foldersData, photosData] = await Promise.all([
-          apiFetch<any>(`/api/v1/weddings/${id}`),
-          apiFetch<any[]>(`/api/v1/weddings/${id}/albums`),
-          apiFetch<any[]>(`/api/v1/weddings/${id}/folders`),
-          apiFetch<any>(`/api/v1/weddings/${id}/photos?page_size=200`),
+          apiFetch<Wedding>(`/api/v1/weddings/${id}`),
+          apiFetch<Album[]>(`/api/v1/weddings/${id}/albums`),
+          apiFetch<Folder[]>(`/api/v1/weddings/${id}/folders`),
+          apiFetch<{ items?: ApiPhoto[] } | ApiPhoto[]>(`/api/v1/weddings/${id}/photos?page_size=200`),
         ])
 
         setWedding(weddingData)
         setAlbums(albumsData || [])
         setFolders(foldersData || [])
 
-        const items: Photo[] = ((photosData?.items || photosData || []) as any[]).map(p => ({
+        const rawList: ApiPhoto[] = Array.isArray(photosData) ? photosData : (photosData?.items || [])
+        const items: Photo[] = rawList.map(p => ({
           id: p.id,
-          weddingId: p.weddingId,
+          weddingId: p.weddingId ?? '',
           src: mediaUrl(p.originalUrl || p.mediumUrl || p.thumbnailUrl || ''),
-          alt: p.altText || p.filename,
+          alt: p.altText || p.filename || '',
           width: p.width || 800,
           height: p.height || 600,
           blurDataURL: p.blurHash || undefined,
-          favorite: p.favorite,
-          isHighlight: p.isHighlight,
-          createdAt: p.createdAt,
+          favorite: p.favorite ?? false,
+          isHighlight: p.isHighlight ?? false,
+          createdAt: p.createdAt ?? '',
           exif: (p.camera || p.lens) ? {
-            camera: p.camera,
-            lens: p.lens,
-            aperture: p.aperture,
-            shutterSpeed: p.shutterSpeed,
-            iso: p.iso,
-            focalLength: p.focalLength,
-            dateTaken: p.dateTaken,
+            camera: p.camera ?? undefined,
+            lens: p.lens ?? undefined,
+            aperture: p.aperture ?? undefined,
+            shutterSpeed: p.shutterSpeed ?? undefined,
+            iso: p.iso ?? undefined,
+            focalLength: p.focalLength ?? undefined,
+            dateTaken: p.dateTaken ?? undefined,
           } : undefined,
-          folderId: p.folderId,
-          albumId: p.albumId,
+          folderId: p.folderId ?? undefined,
+          albumId: p.albumId ?? undefined,
         }))
         setApiPhotos(items)
         setFavorites(new Set(items.filter(i => i.favorite).map(i => i.id)))

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Icon } from '@/lib/icons'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -56,7 +56,7 @@ export default function GalleryPage() {
 
       return matchesSearch && matchesTab
     })
-  }, [search, activeTab])
+  }, [search, activeTab, weddings])
 
   function handleShare(weddingName: string) {
     navigator.clipboard?.writeText(window.location.origin + '/gallery')

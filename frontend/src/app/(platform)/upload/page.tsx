@@ -8,7 +8,6 @@ import { Card, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
 import Link from 'next/link'
 import { AuthGuard } from '@/components/platform/auth-guard'
 import { Breadcrumb } from '@/components/platform/breadcrumb'
@@ -67,13 +66,9 @@ export default function UploadPage() {
   const [weddingId, setWeddingId] = useState('')
   const [albumId, setAlbumId] = useState('')
   const [folderId, setFolderId] = useState('')
-  const [newAlbumName, setNewAlbumName] = useState('')
-  const [newFolderName, setNewFolderName] = useState('')
   const [uploadItems, setUploadItems] = useState<UploadItem[]>([])
   const [pausedIds, setPausedIds] = useState<Set<string>>(new Set())
   const [isUploading, setIsUploading] = useState(false)
-  const [showNewAlbumInput, setShowNewAlbumInput] = useState(false)
-  const [showNewFolderInput, setShowNewFolderInput] = useState(false)
   const [summary, setSummary] = useState<{ totalFiles: number; totalSize: number; errorCount: number } | null>(null)
 
   const [weddings, setWeddings] = useState<WeddingOption[]>([])
@@ -103,7 +98,7 @@ export default function UploadPage() {
 
   async function fetchWeddings() {
     try {
-      const data = await apiFetch<{ items: any[] }>('/api/v1/weddings/?page_size=100')
+      const data = await apiFetch<{ items: Array<{ id: string; weddingName: string }> }>('/api/v1/weddings/?page_size=100')
       setWeddings((data.items || []).map(w => ({ id: w.id, weddingName: w.weddingName })))
     } catch (e) {
       toast({ title: 'Failed to load weddings', description: String(e), variant: 'error' })
@@ -220,7 +215,7 @@ export default function UploadPage() {
 
           setUploadItems(prev => prev.map(i =>
             i.id === item.id
-              ? { ...i, progress: 100, status: 'completed', response: photo as any }
+              ? { ...i, progress: 100, status: 'completed', response: photo }
               : i
           ))
         } catch (err) {
@@ -454,8 +449,6 @@ export default function UploadPage() {
 
   const uploadingAndPaused = uploadItems.filter(i => i.status === 'uploading')
   const remainingQueued = uploadItems.filter(i => i.status === 'queued')
-  const remainingFailed = uploadItems.filter(i => i.status === 'error')
-  const remainingCompleted = uploadItems.filter(i => i.status === 'completed')
 
   const itemMotion = {
     initial: { opacity: 0, x: -20, height: 0 },

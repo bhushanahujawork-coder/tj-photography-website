@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { cn, formatDate } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Icon } from '@/lib/icons'
-import { Card, CardTitle, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
@@ -67,7 +67,7 @@ export default function ParticipantsPage() {
     toast({ title: 'Participant removed', variant: 'success' })
   }
 
-  const handleResend = (_id: string) => {
+  const handleResend = () => {
     toast({ title: 'Invitation resent', description: 'A new invitation has been sent.', variant: 'success' })
   }
 
@@ -138,7 +138,7 @@ export default function ParticipantsPage() {
       render: (p: Participant) => (
         <div className="flex items-center gap-2">
           {p.status === 'pending' && (
-            <Button variant="ghost" size="sm" onClick={() => handleResend(p.id)}>
+            <Button variant="ghost" size="sm" onClick={handleResend}>
               <Icon name="refresh" size={14} />
               Resend
             </Button>

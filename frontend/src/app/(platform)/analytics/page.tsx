@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="relative flex items-end gap-1.5 h-48">
-                  {dailyViews.map((day, i) => (
+                  {dailyViews.map((day) => (
                     <div
                       key={day.date}
                       className="relative flex-1 group"
@@ -179,7 +179,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="relative flex items-end gap-1.5 h-48">
-                  {dailyDownloads.map((day, i) => (
+                  {dailyDownloads.map((day) => (
                     <div
                       key={day.date}
                       className="relative flex-1 group"

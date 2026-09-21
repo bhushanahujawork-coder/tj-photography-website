@@ -53,9 +53,10 @@ const roleBadgeVariant: Record<string, 'success' | 'warning' | 'error' | 'defaul
 
 export default function ProfilePage() {
   const { toast } = useToast()
+  const { user: authUser } = useAuth()
   const [activeTab, setActiveTab] = useState('profile')
   const [saving, setSaving] = useState(false)
-  const [profile, setProfile] = useState<User | null>(useAuth().user)
+  const [profile, setProfile] = useState<User | null>(null)
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
@@ -76,37 +77,48 @@ export default function ProfilePage() {
 
   const storagePercent = storageInfo ? Math.round((storageInfo.usedBytes / storageInfo.limitBytes) * 100) : 0
 
+  // Adopt the auth user during render (documented "adjust state during render"
+  // pattern) instead of syncing it inside an effect.
+  const [adoptedAuthUser, setAdoptedAuthUser] = useState<User | null>(null)
+  if (authUser && authUser !== adoptedAuthUser) {
+    setAdoptedAuthUser(authUser)
+    setProfile(authUser)
+    setLoading(false)
+  }
+
   useEffect(() => {
+    if (authUser || adoptedAuthUser) return
+    let cancelled = false
     async function loadProfile() {
       try {
         const [profileData, storageData] = await Promise.all([
           apiFetch<User>('/api/v1/users/me'),
           apiFetch<StorageInfo>('/api/v1/storage/usage'),
         ])
-        setProfile(profileData)
-        setStorageInfo(storageData)
+        if (!cancelled) {
+          setProfile(profileData)
+          setStorageInfo(storageData)
+        }
       } catch (e) {
         console.error('Failed to load profile', e)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
-    const authUser = useAuth().user
-    if (!authUser) {
-      loadProfile()
-    } else {
-      setProfile(authUser)
-      setLoading(false)
+    loadProfile()
+    return () => {
+      cancelled = true
     }
-  }, [])
+  }, [authUser, adoptedAuthUser])
 
-  useEffect(() => {
-    if (profile) {
-      setName(profile.name)
-      setEmail(profile.email)
-      setPhone(profile.phone || '')
-    }
-  }, [profile])
+  // Keep the editable fields in sync when a new profile object arrives.
+  const [syncedProfile, setSyncedProfile] = useState<User | null>(null)
+  if (profile !== syncedProfile) {
+    setSyncedProfile(profile)
+    setName(profile?.name ?? '')
+    setEmail(profile?.email ?? '')
+    setPhone(profile?.phone ?? '')
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -141,7 +153,7 @@ export default function ProfilePage() {
               <p className="mt-1 text-sm text-muted">{profile?.email}</p>
               {profile?.phone && <p className="text-sm text-muted">{profile.phone}</p>}
             </div>
-            <Button onClick={handleSave} loading={saving}>
+            <Button onClick={handleSave} loading={saving || loading}>
               <Icon name="check" size={16} />
               Save Changes
             </Button>

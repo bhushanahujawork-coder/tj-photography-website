@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useCallback, useMemo, useState, useEffect, type ReactNode } from 'react'
-import type { User, Session, AuthState, Role, Permission, PermissionSet } from '@/types/platform'
+import type { User, AuthState, Role, Permission } from '@/types/platform'
 import { DEFAULT_PERMISSIONS } from '@/types/platform'
 import { apiFetch } from '@/lib/api'
 
@@ -45,10 +45,28 @@ function clearAuth() {
   try { localStorage.removeItem('auth') } catch { }
 }
 
+interface LoginResponse {
+  accessToken: string
+  refreshToken: string
+  expiresAt: string
+  user: {
+    id: string
+    name: string
+    email: string
+    phone?: string
+    avatarUrl?: string
+    role: Role
+    isActive?: boolean
+    isVerified?: boolean
+    createdAt: string
+    lastLoginAt?: string
+  }
+}
+
 async function devLogin(setState: (s: AuthState) => void): Promise<boolean> {
   setState({ user: null, session: null, isLoading: true, isAuthenticated: false })
   try {
-    const res = await apiFetch<any>('/api/v1/auth/login', {
+    const res = await apiFetch<LoginResponse>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'tj@tjphotography.com', password: 'Password123' }),
     })
@@ -100,20 +118,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
-    const saved = loadAuth()
-    if (saved) {
-      setState({
-        user: saved.user,
-        session: { user: saved.user, token: saved.token, expiresAt: '' },
-        isLoading: false,
-        isAuthenticated: true,
-      })
-    } else {
-      setState(prev => ({ ...prev, isLoading: false }))
-    }
+    // Rehydrate from localStorage (external system) in a microtask so the
+    // synchronous effect body stays free of setState — same timing, no cascade.
+    queueMicrotask(() => {
+      const saved = loadAuth()
+      if (saved) {
+        setState({
+          user: saved.user,
+          session: { user: saved.user, token: saved.token, expiresAt: '' },
+          isLoading: false,
+          isAuthenticated: true,
+        })
+      } else {
+        setState(prev => ({ ...prev, isLoading: false }))
+      }
+    })
   }, [])
 
-  const loginWithPhone = useCallback(async (_phone: string) => {
+  const loginWithPhone = useCallback(async () => {
     if (DEV_AUTH) {
       return await devLogin(setState)
     } else {
@@ -124,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const loginWithEmail = useCallback(async (_email: string) => {
+  const loginWithEmail = useCallback(async () => {
     if (DEV_AUTH) {
       return await devLogin(setState)
     } else {
@@ -156,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const verifyOTP = useCallback(async (_code: string) => {
+  const verifyOTP = useCallback(async () => {
     if (DEV_AUTH) {
       return await devLogin(setState)
     }

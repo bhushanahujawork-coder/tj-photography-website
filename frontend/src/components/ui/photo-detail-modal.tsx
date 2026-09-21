@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn, formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { Icon } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,11 +36,15 @@ export function PhotoDetailModal({
 
   const currentPhoto = photos[currentIndex]
 
-  useEffect(() => {
+  // Reset view state when a new photo is opened (or the modal reopens) during
+  // render instead of inside an effect — avoids a cascading render.
+  const [prevView, setPrevView] = useState({ index: initialIndex, open })
+  if (open !== prevView.open || initialIndex !== prevView.index) {
+    setPrevView({ index: initialIndex, open })
     setCurrentIndex(initialIndex)
     setZoomLevel(1)
     setSlideshowActive(false)
-  }, [initialIndex, open])
+  }
 
   useEffect(() => {
     if (slideshowActive) {
