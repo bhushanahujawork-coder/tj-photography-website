@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
-  <rect width="800" height="1000" fill="#161616"/>
-  <rect x="40" y="40" width="720" height="920" fill="none" stroke="#D4AF37" stroke-opacity="0.35" stroke-width="2"/>
-  <circle cx="400" cy="430" r="140" fill="none" stroke="#D4AF37" stroke-opacity="0.5" stroke-width="2"/>
-  <circle cx="400" cy="430" r="96" fill="none" stroke="#D4AF37" stroke-opacity="0.3" stroke-width="1.5"/>
-  <text x="400" y="480" font-family="Georgia, serif" font-size="150" fill="#D4AF37" text-anchor="middle">B</text>
-  <text x="400" y="650" font-family="Arial, sans-serif" font-size="16" fill="#8a857e" text-anchor="middle" letter-spacing="8">PHOTO</text>
-</svg>
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000"><rect width="800" height="1000" fill="#141414"/><rect x="32" y="32" width="736" height="936" fill="none" stroke="#D4AF37" stroke-opacity="0.4" stroke-width="2"/><rect x="44" y="44" width="712" height="912" fill="none" stroke="#D4AF37" stroke-opacity="0.18" stroke-width="1"/><circle cx="400" cy="420" r="132" fill="none" stroke="#D4AF37" stroke-opacity="0.55" stroke-width="2"/><circle cx="400" cy="420" r="92" fill="none" stroke="#D4AF37" stroke-opacity="0.3" stroke-width="1.5"/><text x="400" y="481" font-family="Georgia, serif" font-size="175" fill="#D4AF37" text-anchor="middle">B</text><rect x="356" y="668" width="88" height="2" fill="#D4AF37" fill-opacity="0.7"/><text x="400" y="716" font-family="Arial, sans-serif" font-size="15" fill="#D4AF37" fill-opacity="0.85" text-anchor="middle" B-spacing="7">TJ PHOTOGRAPHY</text></svg>

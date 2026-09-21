@@ -6,7 +6,7 @@ import { Icon } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch, clearGuestSession, getGuestSession, type ApiError } from '@/lib/api'
-import ClientLoginModal from '@/components/client/client-login-modal'
+import ClientLoginModal, { isDemoBypassSession } from '@/components/client/client-login-modal'
 
 interface ClientGallery {
   id: string
@@ -29,6 +29,14 @@ export default function ClientDashboard() {
     const session = getGuestSession()
     if (!session?.token) {
       setAuthed(false)
+      setGalleries([])
+      setLoading(false)
+      return
+    }
+    // TEMP DEMO BYPASS: local demo sessions skip the API (backend OTP untouched).
+    // Shows the honest empty state until real OTP login returns.
+    if (isDemoBypassSession(session.token)) {
+      setAuthed(true)
       setGalleries([])
       setLoading(false)
       return
@@ -111,11 +119,11 @@ export default function ClientDashboard() {
             </div>
             <h2 className="font-serif text-2xl">Welcome back</h2>
             <p className="mt-2 text-sm text-muted">
-              Log in with your phone to see galleries shared with you by TJ Photography.
+              Tap below to see galleries shared with you by TJ Photography.
             </p>
             <Button className="mt-6 w-full gap-2" onClick={() => setLoginOpen(true)}>
-              <Icon name="phone" size={14} />
-              Verify my number
+              <Icon name="arrow-right" size={14} />
+              View My Galleries
             </Button>
           </div>
         )}

@@ -1,7 +1,1 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
-  <rect width="600" height="800" fill="#161616"/>
-  <rect x="30" y="30" width="540" height="740" fill="none" stroke="#D4AF37" stroke-opacity="0.35" stroke-width="2"/>
-  <circle cx="300" cy="360" r="110" fill="none" stroke="#D4AF37" stroke-opacity="0.5" stroke-width="2"/>
-  <text x="300" y="402" font-family="Georgia, serif" font-size="170" fill="#D4AF37" text-anchor="middle">L</text>
-  <text x="300" y="620" font-family="Arial, sans-serif" font-size="15" fill="#8a857e" text-anchor="middle" letter-spacing="8">PHOTO</text>
-</svg>
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800"><rect width="600" height="800" fill="#141414"/><rect x="24" y="24" width="552" height="752" fill="none" stroke="#D4AF37" stroke-opacity="0.4" stroke-width="2"/><rect x="34" y="34" width="532" height="732" fill="none" stroke="#D4AF37" stroke-opacity="0.18" stroke-width="1"/><circle cx="300" cy="340" r="104" fill="none" stroke="#D4AF37" stroke-opacity="0.55" stroke-width="2"/><circle cx="300" cy="340" r="72" fill="none" stroke="#D4AF37" stroke-opacity="0.3" stroke-width="1.5"/><text x="300" y="392" font-family="Georgia, serif" font-size="150" fill="#D4AF37" text-anchor="middle">L</text><rect x="268" y="548" width="64" height="2" fill="#D4AF37" fill-opacity="0.7"/><text x="300" y="592" font-family="Arial, sans-serif" font-size="13" fill="#D4AF37" fill-opacity="0.85" text-anchor="middle" L-spacing="6">TJ PHOTOGRAPHY</text></svg>
