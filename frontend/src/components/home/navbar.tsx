@@ -17,12 +17,21 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [clientLoginOpen, setClientLoginOpen] = useState(false)
   const [solid, setSolid] = useState(false)
+  const [compact, setCompact] = useState(false)
 
   useEffect(() => {
     if (!window.location.hash) {
       window.scrollTo(0, 0)
     }
     history.scrollRestoration = 'manual'
+  }, [])
+
+  /* Compact mode: single scroll shrinks the whole header bar + logo. */
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 60)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   /* Solid (cream + dark) sticky header: transparent over the hero band, then
@@ -113,7 +122,7 @@ export default function Navbar() {
           : '0 1px 10px rgba(0, 0, 0, 0.45), 0 0 2px rgba(0, 0, 0, 0.3)',
       }}
     >
-      <div className="relative h-20 md:h-24">
+      <div className={`relative transition-[height] duration-500 ease-out ${compact ? 'h-14 md:h-16' : 'h-20 md:h-24'}`}>
         <div
           data-editor="logo"
           className="absolute top-0 z-10 flex h-full items-center min-w-0"
@@ -134,12 +143,14 @@ export default function Navbar() {
               width={3268}
               height={240}
               priority
-              className="w-auto transition-[filter] duration-300"
+              className="w-auto transition-[filter,width] duration-500 ease-out"
               style={{
                 filter: solid
                   ? 'invert(1)'
                   : 'drop-shadow(0 1px 6px rgba(0, 0, 0, 0.45))',
-                width: 'var(--tj-logo-width, 272px)',
+                width: compact
+                  ? 'calc(var(--tj-logo-width, 272px) * 0.68)'
+                  : 'var(--tj-logo-width, 272px)',
                 height: 'auto',
                 maxWidth: '100%',
               }}
@@ -160,7 +171,7 @@ export default function Navbar() {
             <a
               key={link.href}
               href={link.href}
-              className="relative font-[var(--font-poppins)] text-[11px] xl:text-xs tracking-[0.18em] uppercase font-medium whitespace-nowrap transition-colors duration-300"
+              className={`relative font-[var(--font-poppins)] tracking-[0.18em] uppercase font-medium whitespace-nowrap transition-all duration-500 ${compact ? 'text-[10px]' : 'text-[11px] xl:text-xs'}`}
               style={{ color: navColor }}
               onMouseEnter={(e) => e.currentTarget.style.color = navHover}
               onMouseLeave={(e) => e.currentTarget.style.color = navColor}

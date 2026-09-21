@@ -1,64 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import Navbar from '@/components/home/navbar'
 import { Lightbox } from '@/components/ui/lightbox'
 import { portfolio } from '@/data/portfolio'
 import { HomeConfigProvider } from '@/lib/home-config/client'
-import { cn } from '@/lib/utils'
-
-function QuickPortfolioHeader() {
-  const [compact, setCompact] = useState(false)
-
-  useEffect(() => {
-    const onScroll = () => setCompact(window.scrollY > 60)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  return (
-    <div
-      className={cn(
-        'sticky top-20 md:top-24 z-40 w-full bg-[#0a0a0a] border-b border-gold/15 overflow-hidden transition-all duration-500 ease-out',
-        compact ? 'py-2' : 'py-7 md:py-9',
-      )}
-    >
-      <div className="mx-auto max-w-7xl px-6 text-center">
-        <p
-          className={cn(
-            'uppercase font-medium text-gold transition-all duration-500',
-            compact ? 'text-[9px] tracking-[0.3em]' : 'text-[11px] md:text-xs tracking-[0.3em]',
-          )}
-        >
-          TJ Photography
-        </p>
-        <h1
-          className={cn(
-            'font-serif text-white tracking-wide leading-tight transition-all duration-500',
-            compact ? 'mt-0.5 text-lg md:text-xl' : 'mt-2 text-3xl md:text-5xl',
-          )}
-        >
-          Quick Portfolio
-        </h1>
-        <div
-          className={cn(
-            'grid transition-all duration-500 ease-out',
-            compact ? 'grid-rows-[0fr] opacity-0 mt-0' : 'grid-rows-[1fr] opacity-100 mt-3',
-          )}
-        >
-          <div className="overflow-hidden">
-            <p className="text-white/50 text-xs md:text-sm font-light tracking-wide">
-              Real weddings, real emotions — a glimpse of our finest frames
-            </p>
-            <div className="mt-3 w-14 h-px bg-gold mx-auto" />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function PortfolioGalleryPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -72,10 +19,7 @@ export default function PortfolioGalleryPage() {
     <HomeConfigProvider>
       <Navbar />
       <main className="bg-[#eae1d2]">
-        <div className="pt-20 md:pt-24">
-          <QuickPortfolioHeader />
-        </div>
-        <div className="columns-2 md:columns-3 xl:columns-4 gap-[2px] pt-[2px] -mt-px">
+        <div className="columns-2 md:columns-3 xl:columns-4 gap-[2px] pt-20 md:pt-24 -mt-px">
           {portfolio.map((image) => (
             <button
               key={image.id}
