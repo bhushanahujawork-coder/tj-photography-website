@@ -19,7 +19,7 @@ export default function SoulCinema() {
   if (type.bodyColor) bodyStyle.color = type.bodyColor
   return (
     <section id="soul-cinema" className="relative w-full">
-      <div className="relative w-full min-h-svh overflow-hidden">
+      <div className="relative w-full overflow-hidden aspect-[16/9] min-h-[60vh] md:min-h-[70vh] xl:min-h-[80vh]">
         <video
           className="absolute inset-0 w-full h-full object-cover object-center grayscale"
           src={soulCinema.videoSrc}
@@ -83,7 +83,6 @@ export default function SoulCinema() {
         </div>
 
         <div className="absolute top-0 inset-x-0 h-[15%]" style={{ backgroundColor: frameColor }} />
-        <div className="absolute bottom-0 inset-x-0 h-[15%]" style={{ backgroundColor: frameColor }} />
       </div>
     </section>
   )

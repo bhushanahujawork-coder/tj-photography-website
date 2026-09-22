@@ -32,21 +32,35 @@ function Eyebrow({ label, dark = false }: { label: string; dark?: boolean }) {
 }
 
 function SplitReveal({ text, className = '' }: { text: string; className?: string }) {
+  // NOTE: the in-view trigger lives on the OUTER (unclipped) mask wrapper.
+  // Observing the inner word directly never fires: at y 115% the word is fully
+  // clipped by its overflow-hidden wrapper, so IntersectionObserver reports
+  // isIntersecting:false forever and the heading stays invisible (huge blank
+  // gap below the navbar). Variants propagate the trigger to the inner word.
   return (
     <span className={className}>
       {text.split(' ').map((word, i) => (
-        <span key={i} className="inline-block overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em]">
+        <motion.span
+          key={i}
+          className="inline-block overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em]"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-40px' }}
+        >
           <motion.span
             className="inline-block"
-            initial={{ y: '115%' }}
-            whileInView={{ y: 0 }}
-            viewport={{ once: true, margin: '-40px' }}
-            transition={{ duration: 0.75, ease: easeLux, delay: i * 0.055 }}
+            variants={{
+              hidden: { y: '115%' },
+              show: {
+                y: '0%',
+                transition: { duration: 0.75, ease: easeLux, delay: i * 0.055 },
+              },
+            }}
           >
             {word}
             {'\u00A0'}
           </motion.span>
-        </span>
+        </motion.span>
       ))}
     </span>
   )
@@ -167,29 +181,6 @@ function GlowSection({
   )
 }
 
-function Marquee() {
-  return (
-    <div className="relative w-full bg-[#0a0a0a] py-3 md:py-4 border-y border-gold/10 overflow-hidden">
-      <div className="flex whitespace-nowrap animate-marquee w-max">
-        {[0, 1, 2, 3].map((dup) => (
-          <div key={dup} className="flex items-center shrink-0" aria-hidden={dup > 0}>
-            {about.marquee.items.map((item, i) => (
-              <span key={i} className="flex items-center px-5 md:px-7">
-                <span className="text-gold/80 text-[11px] md:text-sm tracking-[0.45em] uppercase font-medium">
-                  {item}
-                </span>
-                <span className="text-gold/40 text-xs ml-5 md:ml-7" aria-hidden>
-                  {'\u2726'}
-                </span>
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function QuoteBand() {
   const quotes = about.quotes
   const [i, setI] = useState(0)
@@ -203,7 +194,7 @@ function QuoteBand() {
   if (quotes.length === 0) return null
 
   return (
-    <section data-hero className="relative w-full bg-[#0a0a0a] py-8 md:py-10 overflow-hidden">
+    <section className="relative w-full bg-[#0a0a0a] py-8 md:py-10 overflow-hidden">
       <GoldDust />
       <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
         <span className="text-gold/30 font-serif text-5xl md:text-6xl leading-none select-none" aria-hidden>
@@ -352,7 +343,7 @@ export default function AboutPage() {
       {/* 01 — Our Story */}
       <section
         ref={storyRef}
-        className="relative w-full bg-[#eae1d2] pt-8 md:pt-10 pb-6 md:pb-8 overflow-hidden"
+        className="relative w-full bg-[#eae1d2] pt-16 md:pt-20 pb-6 md:pb-8 overflow-hidden"
       >
         <div className="max-w-7xl mx-auto px-6">
           <motion.div
@@ -362,14 +353,8 @@ export default function AboutPage() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="max-w-lg"
           >
-            <h1 className="font-serif text-4xl md:text-5xl text-foreground tracking-wide leading-[1.1]">
-              <SplitReveal text={about.story.heading} />
-            </h1>
-            <div className="mt-2 md:mt-3 font-serif italic text-2xl md:text-[26px] text-gold-dark tracking-wide">
-              <SplitReveal text={about.story.accent} />
-            </div>
             <motion.div
-              className="mt-3 w-16 h-px origin-left bg-gold-dark"
+              className="w-16 h-px origin-left bg-gold-dark"
               initial={{ scaleX: 0 }}
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
@@ -383,14 +368,14 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="lg:pt-12"
+              className="min-w-0 lg:pt-3"
             >
               {about.story.paragraphs.map((p, i) => (
                 <motion.p
                   key={i}
                   className={
                     i === 0
-                      ? 'mt-6 border-l-2 border-gold-dark pl-5 md:pl-6 text-[#2f2a20] font-serif text-xl md:text-2xl leading-[1.65] tracking-wide'
+                      ? 'mt-4 border-l-2 border-gold-dark pl-5 md:pl-6 text-[#2f2a20] font-serif text-xl md:text-2xl leading-[1.65] tracking-wide'
                       : 'mt-4 border-l-2 border-gold-dark/50 pl-5 md:pl-6 text-muted text-sm md:text-[15px] font-light leading-[1.95] tracking-[0.01em]'
                   }
                   initial={{ opacity: 0, y: 14 }}
@@ -402,11 +387,11 @@ export default function AboutPage() {
                 </motion.p>
               ))}
               {about.story.stats.length > 0 && (
-                <div className="mt-8 border-t border-gold/25 pt-6 flex">
+                <div className="mt-8 border-t border-gold/25 pt-6 flex flex-col gap-5 sm:flex-row sm:gap-0">
                   {about.story.stats.map((s, i) => (
                     <motion.div
                       key={s.label}
-                      className={`flex-1 ${i > 0 ? 'border-l border-gold/25 pl-4 md:pl-6' : ''} ${i < about.story.stats.length - 1 ? 'pr-4 md:pr-6' : ''}`}
+                      className={`flex-1 ${i > 0 ? 'border-t border-gold/25 pt-5 sm:border-t-0 sm:pt-0 sm:border-l sm:pl-4 md:pl-6' : ''} ${i < about.story.stats.length - 1 ? 'sm:pr-4 md:pr-6' : ''}`}
                       initial={{ opacity: 0, y: 16 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
@@ -429,7 +414,7 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="relative max-w-md lg:max-w-lg mx-auto w-full"
+              className="relative min-w-0 max-w-md lg:max-w-lg mx-auto w-full"
             >
               <div className="absolute -inset-3 md:-inset-4 border border-gold/30 rounded-xl translate-x-3 translate-y-3 rotate-[-3deg]" />
               <div className="relative rounded-xl overflow-hidden aspect-[4/5] shadow-xl shadow-black/20 rotate-[-2deg]">
@@ -480,10 +465,8 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <Marquee />
-
       {/* 02 — Leadership */}
-      <GlowSection className="w-full bg-[#161616] py-8 md:py-12 overflow-hidden">
+      <GlowSection className="w-full bg-[#161616] py-4 md:py-8 overflow-hidden">
         <GoldDust />
         <div className="max-w-6xl mx-auto px-6">
           <SectionHeading
@@ -518,8 +501,6 @@ export default function AboutPage() {
           </div>
         </section>
       )}
-
-      <Marquee />
 
       {/* 04 — As Seen In */}
       <GlowSection className="w-full bg-[#161616] py-8 md:py-10 overflow-hidden">

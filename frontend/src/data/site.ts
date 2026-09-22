@@ -10,15 +10,10 @@ export const site = {
   },
   nav: {
     links: [
-      { label: 'Weddings', href: '#weddings' },
+      { label: 'Quick Portfolio', href: '#portfolio' },
       { label: 'Films', href: '/films' },
       { label: 'About Us', href: '/about' },
-      { label: 'Contact Us', href: '#contact' },
     ] satisfies NavLink[],
-    weddingLink: {
-      label: 'Find My Wedding',
-      href: '#wedding',
-    } satisfies NavLink,
     photographerLogin: {
       label: 'Photographer Login',
       href: '/admin',

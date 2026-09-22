@@ -27,7 +27,6 @@ export const HOME_CONFIG_DEFAULTS: HomeConfig = {
         { label: 'Quick Portfolio', href: '/quickportfolio' },
         { label: 'Films', href: '/films' },
         { label: 'About Us', href: '/about' },
-        { label: 'Contact Us', href: '#contact' },
       ],
     },
     // Sparse exceptions that reproduce the current (pre-migration) per-device design exactly.

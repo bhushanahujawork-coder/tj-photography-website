@@ -12,7 +12,6 @@ import ClientLoginModal from '@/components/client/client-login-modal'
 export default function Navbar() {
   const { config } = useHomeConfig()
   const header = config.header
-  const router = useRouter()
   const pathname = usePathname()
   /* Inner pages (no fullscreen hero) start solid + compact so the header
      never morphs mid-scroll — that morph is what looked "weird".
@@ -202,12 +201,12 @@ export default function Navbar() {
           <button
             onClick={() => setClientLoginOpen(true)}
             className="relative ml-1 inline-flex items-center gap-1.5 border border-gold/70 px-4 py-2 rounded-full text-[10px] xl:text-[11px] tracking-[0.18em] uppercase font-semibold whitespace-nowrap transition-all duration-300 hover:bg-gold/15"
-          style={{ color: navColor, borderColor: solid ? '#9a7b14' : 'rgba(255,255,255,0.6)' }}
-          data-editor="nav"
-        >
-          Client Login
-        </button>
-      </nav>
+            style={{ color: navColor, borderColor: solid ? '#9a7b14' : 'rgba(255,255,255,0.6)' }}
+            data-editor="nav"
+          >
+            Client Login
+          </button>
+        </nav>
       <ClientLoginModal
         open={clientLoginOpen}
         onClose={() => setClientLoginOpen(false)}
