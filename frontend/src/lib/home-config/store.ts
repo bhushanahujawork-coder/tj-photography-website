@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs'
 import path from 'path'
+import { Redis } from '@upstash/redis'
 import { createInitialConfig, mergeConfig } from './shared'
 import type { HomeConfig } from './types'
 
@@ -7,12 +8,23 @@ export type ConfigStatus = 'draft' | 'published'
 
 /* ------------------------------------------------------------------ */
 /*  Dual-mode storage layer                                           */
-/*  • Vercel:  Blob (uploads) + KV (config)                           */
+/*  • Vercel:  Blob (uploads) + Upstash Redis (config)                 */
 /*  • Local:   node:fs (current behaviour, zero-change dev experience) */
 /* ------------------------------------------------------------------ */
 
 const isVercel = !!process.env.BLOB_READ_WRITE_TOKEN
-const isKV = !!process.env.KV_REST_API_URL
+// Upstash Redis vars (new) with fallback to legacy Vercel KV var names
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
+const isKV = !!REDIS_URL && !!REDIS_TOKEN
+
+let redis: Redis | null = null
+function getRedis(): Redis {
+  if (!redis) {
+    redis = new Redis({ url: REDIS_URL!, token: REDIS_TOKEN! })
+  }
+  return redis
+}
 
 const KV_DRAFT = 'home-config:draft'
 const KV_PUBLISHED = 'home-config:published'
@@ -43,9 +55,8 @@ export function toDiskPath(src: string): string | null {
 
 export async function readConfig(status: ConfigStatus): Promise<HomeConfig> {
   if (isKV) {
-    const { kv } = await import('@vercel/kv')
     const key = status === 'draft' ? KV_DRAFT : KV_PUBLISHED
-    const raw = await kv.get<HomeConfig>(key)
+    const raw = await getRedis().get<HomeConfig>(key)
     if (!raw) return createInitialConfig()
     return mergeConfig(createInitialConfig(), raw)
   }
@@ -62,9 +73,8 @@ export async function writeConfig(status: ConfigStatus, config: HomeConfig): Pro
   const clean = JSON.parse(JSON.stringify(config))
 
   if (isKV) {
-    const { kv } = await import('@vercel/kv')
     const key = status === 'draft' ? KV_DRAFT : KV_PUBLISHED
-    await kv.set(key, clean)
+    await getRedis().set(key, clean)
     return
   }
 
@@ -301,7 +311,7 @@ function guessMime(rel: string): string {
  * Returns a human-readable description of the current storage mode.
  */
 export function storageMode(): string {
-  if (isVercel && isKV) return 'Vercel Blob + KV'
+  if (isVercel && isKV) return 'Vercel Blob + Upstash Redis'
   if (isVercel) return 'Vercel Blob (config on fs)'
   if (isKV) return 'KV (uploads on fs)'
   return 'Local filesystem'

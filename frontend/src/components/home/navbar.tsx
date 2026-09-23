@@ -13,6 +13,7 @@ export default function Navbar() {
   const { config } = useHomeConfig()
   const header = config.header
   const pathname = usePathname()
+  const router = useRouter()
   /* Inner pages (no fullscreen hero) start solid + compact so the header
      never morphs mid-scroll — that morph is what looked "weird".
      Home ("/") starts transparent + tall for the cinematic hero. */
