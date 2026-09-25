@@ -1,5 +1,11 @@
 import { API_BASE_URL, ApiError, getStoredAuth, setStoredAuth, clearStoredAuth, apiFetch, transformKeys } from './api'
 import type { StoredSession } from './api'
+import {
+  demoCreateQuotation,
+  demoGetQuotationConfig,
+  demoSendOtp,
+  demoVerifyOtp,
+} from './quote-demo'
 
 // ---------------------------------------------------------------------------
 // Types (camelCase — snake_case API responses are transformed by transformKeys)
@@ -151,6 +157,13 @@ function saveQuoteSession(auth: EnquiryAuth): void {
 // only accept the short-lived enquiry JWT.
 // ---------------------------------------------------------------------------
 
+const REQUEST_TIMEOUT_MS = 4000
+
+function requestSignal(): AbortSignal | undefined {
+  if (typeof AbortSignal === 'undefined' || typeof AbortSignal.timeout !== 'function') return undefined
+  return AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+}
+
 async function enquiryFetch<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -159,7 +172,11 @@ async function enquiryFetch<T>(path: string, options: RequestInit = {}, token?: 
   if (token) headers['Authorization'] = `Bearer ${token}`
 
   const url = `${API_BASE_URL}${path}`
-  const res = await fetch(url, { ...options, headers })
+  const res = await fetch(url, {
+    ...options,
+    headers,
+    signal: options.signal ?? requestSignal(),
+  })
 
   if (!res.ok) {
     const body = await res.text()
@@ -183,27 +200,74 @@ async function enquiryFetch<T>(path: string, options: RequestInit = {}, token?: 
 // Quotation API
 // ---------------------------------------------------------------------------
 
+const BACKEND_DOWN_STATUSES = new Set([0, 404, 405, 502, 503, 504])
+
+function backendUnavailable(err: unknown): boolean {
+  if (err instanceof ApiError) return BACKEND_DOWN_STATUSES.has(err.status)
+  if (typeof TypeError !== 'undefined' && err instanceof TypeError) return true
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException) {
+    return err.name === 'TimeoutError' || err.name === 'AbortError'
+  }
+  return false
+}
+
+async function withDemoFallback<T>(request: () => Promise<T>, demo: () => T): Promise<T> {
+  try {
+    return await request()
+  } catch (err) {
+    if (!backendUnavailable(err)) throw err
+    console.warn('[quote] backend unavailable — falling back to demo mode', err)
+    return demo()
+  }
+}
+
+function isDemoSession(): boolean {
+  return getQuoteToken()?.startsWith('demo.') ?? false
+}
+
+function demoResult(payload: CreateEnquiryPayload): QuotationResult {
+  const session = getQuoteSession()
+  return demoCreateQuotation(
+    payload,
+    session?.user?.phone ?? '',
+    session?.user?.id ?? '',
+  )
+}
+
 export async function getQuotationConfig(): Promise<QuotationConfig> {
-  return enquiryFetch<QuotationConfig>('/api/v1/enquiries/config')
+  return withDemoFallback(
+    () => enquiryFetch<QuotationConfig>('/api/v1/enquiries/config'),
+    demoGetQuotationConfig,
+  )
 }
 
 export async function sendEnquiryOtp(phone: string): Promise<OtpSendResponse> {
-  return enquiryFetch<OtpSendResponse>('/api/v1/enquiries/otp/send', {
-    method: 'POST',
-    body: JSON.stringify({ phone }),
-  })
+  return withDemoFallback(
+    () =>
+      enquiryFetch<OtpSendResponse>('/api/v1/enquiries/otp/send', {
+        method: 'POST',
+        body: JSON.stringify({ phone }),
+      }),
+    () => demoSendOtp(phone),
+  )
 }
 
 export async function verifyEnquiryOtp(phone: string, otpCode: string): Promise<EnquiryAuth> {
-  const auth = await enquiryFetch<EnquiryAuth>('/api/v1/enquiries/otp/verify', {
-    method: 'POST',
-    body: JSON.stringify({ phone, otp_code: otpCode }),
-  })
+  const auth = await withDemoFallback(
+    () =>
+      enquiryFetch<EnquiryAuth>('/api/v1/enquiries/otp/verify', {
+        method: 'POST',
+        body: JSON.stringify({ phone, otp_code: otpCode }),
+      }),
+    () => demoVerifyOtp(phone, otpCode),
+  )
   saveQuoteSession(auth)
   return auth
 }
 
 export async function createQuotation(payload: CreateEnquiryPayload): Promise<QuotationResult> {
+  if (isDemoSession()) return demoResult(payload)
+
   const body = {
     event_type: payload.eventType,
     couple_name: payload.coupleName,
@@ -212,10 +276,14 @@ export async function createQuotation(payload: CreateEnquiryPayload): Promise<Qu
     package_id: payload.packageId,
     add_ons: payload.addOns.map((a) => ({ id: a.id, qty: a.qty })),
   }
-  return enquiryFetch<QuotationResult>('/api/v1/enquiries', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  }, getQuoteToken())
+  return withDemoFallback(
+    () =>
+      enquiryFetch<QuotationResult>('/api/v1/enquiries', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }, getQuoteToken()),
+    () => demoResult(payload),
+  )
 }
 
 // ---------------------------------------------------------------------------
