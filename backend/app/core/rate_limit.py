@@ -38,6 +38,9 @@ _upload_bucket = TokenBucket(
     burst=settings.UPLOAD_RATE_BURST,
 )
 
+# Quotation wizard: ~20 req/min per IP (OTP send/verify + config + create).
+_enquiries_bucket = TokenBucket(rate=20.0 / 60.0, burst=20)
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -48,6 +51,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if request.url.path.startswith("/api/v1/auth"):
             bucket = _auth_bucket
+        elif request.url.path.startswith("/api/v1/enquiries"):
+            bucket = _enquiries_bucket
         elif request.url.path.startswith("/api/v1/upload"):
             bucket = _upload_bucket
         else:

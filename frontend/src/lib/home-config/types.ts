@@ -158,6 +158,66 @@ export interface FooterConfig {
   designerLine: string
 }
 
+export interface AboutQuoteCfg {
+  text: string
+  label: string
+}
+
+export interface AboutMemberCfg {
+  name: string
+  role: string
+  bio: string
+  image: string
+}
+
+/** Every About section ships 3 fixed design variants (A / B / C). */
+export const ABOUT_VARIANT_COUNT = 3
+export type AboutVariant = 0 | 1 | 2
+
+/** The five About page sections that each carry an independent design variant. */
+export const ABOUT_SECTION_KEYS = ['hero', 'quotes', 'founders', 'approach', 'team'] as const
+export type AboutSectionKey = (typeof ABOUT_SECTION_KEYS)[number]
+
+export interface AboutConfig {
+  hero: {
+    /** Design A image — also the fallback for B/C when their image is unset. */
+    image: MediaRef
+    /** Design B image (inherits `image` when unset). */
+    imageB: MediaRef
+    /** Design C image (inherits `image` when unset). */
+    imageC: MediaRef
+    title: string
+    subtitle: string
+    variant: AboutVariant
+  }
+  quotes: AboutQuoteCfg[]
+  quotesVariant: AboutVariant
+  founders: {
+    eyebrow: string
+    heading: string
+    /** Design A group image — also the fallback for B/C when unset. */
+    groupImage: MediaRef
+    groupImageB: MediaRef
+    groupImageC: MediaRef
+    members: AboutMemberCfg[]
+    variant: AboutVariant
+  }
+  approach: {
+    eyebrow: string
+    heading: string
+    paragraph: string
+    principles: string[]
+    variant: AboutVariant
+  }
+  team: {
+    eyebrow: string
+    heading: string
+    subtitle: string
+    members: AboutMemberCfg[]
+    variant: AboutVariant
+  }
+}
+
 export interface GlobalConfig {
   background: string
   noise: number
@@ -214,6 +274,7 @@ export interface HomeConfig {
   contact: ContactConfig
   footer: FooterConfig
   films: FilmsConfig
+  about: AboutConfig
 }
 
 export const DEFAULT_SECTION_ORDER: SectionId[] = [...SECTION_IDS]

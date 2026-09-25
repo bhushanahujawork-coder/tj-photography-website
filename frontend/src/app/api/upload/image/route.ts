@@ -17,6 +17,7 @@ const KIND_OPTS: Record<string, { maxSize: number; quality: number }> = {
   hero: { maxSize: 2600, quality: 82 },
   portfolio: { maxSize: 1600, quality: 82 },
   poster: { maxSize: 1920, quality: 82 },
+  about: { maxSize: 2400, quality: 85 },
   generic: { maxSize: 2000, quality: 82 },
 }
 

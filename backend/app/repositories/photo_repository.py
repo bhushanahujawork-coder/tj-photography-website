@@ -22,6 +22,7 @@ class PhotoRepository(BaseRepository[Photo]):
         is_hidden: Optional[bool] = None,
         uploaded_by: Optional[str] = None,
         is_deleted: Optional[bool] = None,
+        include_deleted: bool = False,
         date_from: Optional[datetime] = None,
         date_to: Optional[datetime] = None,
         sort_by: str = "created_at",
@@ -29,7 +30,11 @@ class PhotoRepository(BaseRepository[Photo]):
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[Photo], int]:
-        if is_deleted is None:
+        if include_deleted:
+            # Include soft-deleted AND live photos (share galleries where the
+            # photographer turned OFF "hide deleted from guests").
+            conditions = []
+        elif is_deleted is None:
             conditions = [Photo.is_deleted == False]
         else:
             conditions = [Photo.is_deleted == is_deleted]

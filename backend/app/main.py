@@ -14,7 +14,7 @@ from app.routers import (
     photos_router, participants_router, uploads_router, media_router,
     downloads_router, activity_router, notifications_router, users_router,
     settings_router, dashboard_router, permissions_router, faces_router,
-    client_router,
+    client_router, enquiries_router, leads_router,
 )
 
 logger = setup_logging()
@@ -82,6 +82,8 @@ app.include_router(dashboard_router)
 app.include_router(permissions_router)
 app.include_router(faces_router)
 app.include_router(client_router)
+app.include_router(enquiries_router)
+app.include_router(leads_router)
 
 
 @app.get("/health", tags=["System"])

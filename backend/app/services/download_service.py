@@ -57,6 +57,10 @@ class DownloadService:
             raise ForbiddenError(
                 message=f"Permission 'download' denied for role '{role}'"
             )
+        if role not in ("photographer", "admin") and not await self.gallery_downloads_enabled(
+            data.wedding_id,
+        ):
+            raise ForbiddenError(message="Downloads are disabled for this gallery")
 
         if getattr(data, "pin", None):
             self._check_wedding_pin(wedding, data.pin)
@@ -143,6 +147,8 @@ class DownloadService:
             url=_share_url(link.code),
             role=link.role,
             download_enabled=link.download_enabled,
+            # Authed create response: the creator (photographer/editor) is
+            # the one who just set the PIN, so echoing it back is fine.
             pin_code=link.pin_code,
             expires_at=link.expires_at,
             access_count=link.access_count,
@@ -235,7 +241,9 @@ class DownloadService:
             url=_share_url(link.code),
             role=link.role,
             download_enabled=link.download_enabled,
-            pin_code=link.pin_code,
+            # Public route: never echo the PIN — anyone holding the link
+            # could otherwise read it and bypass the gallery PIN gate.
+            pin_code=None,
             expires_at=link.expires_at,
             access_count=link.access_count + 1,
             created_at=link.created_at,
@@ -258,6 +266,19 @@ class DownloadService:
         settings = wedding.settings or {}
         gallery = settings.get("gallery") if isinstance(settings.get("gallery"), dict) else {}
         return gallery.get(key, default)
+
+    @staticmethod
+    def _group_flag(wedding, key: str, default):
+        settings = wedding.settings or {}
+        group = settings.get("group") if isinstance(settings.get("group"), dict) else {}
+        return group.get(key, default)
+
+    async def gallery_downloads_enabled(self, wedding_id: str) -> bool:
+        """Gallery-level `download_enabled` switch (settings → Gallery)."""
+        wedding = await self.wedding_repo.get(wedding_id)
+        if not wedding:
+            return True
+        return bool(self._gallery_flag(wedding, "download_enabled", True))
 
     @staticmethod
     def _check_wedding_pin(wedding, pin: str | None) -> None:
@@ -333,16 +354,20 @@ class DownloadService:
 
         await self.share_link_repo.update(link.id, access_count=link.access_count + 1)
 
-        download_allowed = link.download_enabled and await self.share_role_has_permission(
-            link, "download",
+        download_allowed = (
+            link.download_enabled
+            and self._gallery_flag(wedding, "download_enabled", True)
+            and await self.share_role_has_permission(link, "download")
         )
 
         group_settings = (wedding.settings or {}).get("group") or {}
+        if not isinstance(group_settings, dict):
+            group_settings = {}
         liveness_enabled = bool(
             group_settings.get("liveness_enabled", False)
         )
 
-        return ShareGalleryResponse(
+        resp = ShareGalleryResponse(
             wedding=WeddingResponse.model_validate(wedding),
             share=ShareLinkResponse(
                 id=link.id,
@@ -351,14 +376,23 @@ class DownloadService:
                 url=_share_url(link.code),
                 role=link.role,
                 download_enabled=link.download_enabled,
-                pin_code=link.pin_code,
+                # Public gallery context: never echo the PIN back.
+                pin_code=None,
                 expires_at=link.expires_at,
                 access_count=link.access_count + 1,
                 created_at=link.created_at,
             ),
             download_allowed=download_allowed,
             liveness_enabled=liveness_enabled,
+            welcome_message=group_settings.get("welcome_message"),
+            group_name=group_settings.get("name"),
+            group_icon_url=group_settings.get("icon_url"),
+            hide_deleted=bool(group_settings.get("hide_deleted", True)),
+            gallery_download_enabled=bool(
+                self._gallery_flag(wedding, "download_enabled", True)
+            ),
         )
+        return resp
 
     async def share_role_has_permission(self, link, permission: str) -> bool:
         return await PermissionService(self.db).has_permission(
@@ -387,7 +421,11 @@ class DownloadService:
             raise ForbiddenError(message=f"Permission 'view' denied for role '{link.role}'")
 
         hide_invisible = link.role in ("client", "guest")
-        visible_filter = [Photo.is_deleted == False]
+        wedding = await self.wedding_repo.get(link.wedding_id)
+        hide_deleted = bool(self._group_flag(wedding, "hide_deleted", True)) if wedding else True
+        visible_filter = []
+        if hide_deleted:
+            visible_filter.append(Photo.is_deleted == False)
         if hide_invisible:
             visible_filter.append(Photo.is_hidden == False)
 
@@ -476,7 +514,13 @@ class DownloadService:
         link = await self.get_active_share_link(code)
         await self.enforce_share_access(link, current_user=current_user, gallery_pin=gallery_pin)
 
-        allowed = link.download_enabled and await self.share_role_has_permission(link, "download")
+        wedding = await self.wedding_repo.get(link.wedding_id)
+        gallery_ok = self._gallery_flag(wedding, "download_enabled", True) if wedding else True
+        allowed = (
+            link.download_enabled
+            and gallery_ok
+            and await self.share_role_has_permission(link, "download")
+        )
         if not allowed:
             raise ForbiddenError(message="Download not permitted for this gallery")
 

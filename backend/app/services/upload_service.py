@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import NotFoundError, RateLimitError, ValidationError
-from app.core.media import media_url
 from app.core.storage import get_storage
 from app.repositories.album_repository import AlbumRepository
 from app.repositories.folder_repository import FolderRepository
@@ -17,6 +16,7 @@ from app.schemas.common import SuccessResponse
 from app.schemas.photo import PhotoResponse
 from app.schemas.upload import FileAllocation, UploadCompleteRequest, UploadInitResponse, UploadProgressResponse
 from app.services.image_service import ImageProcessingService
+from app.services.photo_service import PhotoService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ class UploadService:
 
     def __init__(self, db: AsyncSession):
         self.photo_repo = PhotoRepository(db)
+        self.photo_service = PhotoService(db)
         self.wedding_repo = WeddingRepository(db)
         self.album_repo = AlbumRepository(db)
         self.folder_repo = FolderRepository(db)
@@ -153,7 +154,10 @@ class UploadService:
 
             uploader_id = current_user.get("sub")
 
-            photo = await self.photo_repo.create_from_upload(
+            # PhotoService.create_from_upload creates the row AND bumps the
+            # wedding/album/folder photo counters (and registers the face
+            # profile) — do not duplicate those increments below.
+            photo = await self.photo_service.create_from_upload(
                 {
                     "wedding_id": wedding_id,
                     "album_id": session.get("album_id"),
@@ -186,52 +190,12 @@ class UploadService:
                 )
 
             session["completed"].add(file_id)
-            wedding = await self.wedding_repo.get(wedding_id)
-            if wedding:
-                await self.wedding_repo.update(
-                    wedding_id, total_photos=wedding.total_photos + 1,
-                )
 
-            if session.get("album_id"):
-                album = await self.album_repo.get(session["album_id"])
-                if album:
-                    await self.album_repo.update(
-                        session["album_id"], photo_count=album.photo_count + 1,
-                    )
-
-            if session.get("folder_id"):
-                folder = await self.folder_repo.get(session["folder_id"])
-                if folder:
-                    await self.folder_repo.update(
-                        session["folder_id"], photo_count=folder.photo_count + 1,
-                    )
-
-            resp = PhotoResponse(
-                id=photo.id,
-                wedding_id=photo.wedding_id,
-                album_id=photo.album_id,
-                folder_id=photo.folder_id,
-                filename=photo.filename,
-                original_url=media_url(photo.id, "original"),
-                medium_url=media_url(photo.id, "medium") if photo.medium_path else None,
-                thumbnail_url=media_url(photo.id, "thumbnail") if photo.thumbnail_path else None,
-                blur_hash=photo.blur_hash,
-                alt_text=photo.alt_text,
-                width=photo.width,
-                height=photo.height,
-                file_size=photo.file_size,
-                content_type=photo.content_type,
-                camera=photo.camera,
-                lens=photo.lens,
-                aperture=photo.aperture,
-                shutter_speed=photo.shutter_speed,
-                iso=photo.iso,
-                focal_length=photo.focal_length,
-                date_taken=photo.date_taken,
-                favorite=photo.favorite,
-                is_highlight=photo.is_highlight,
-                is_hidden=photo.is_hidden,
-                created_at=photo.created_at,
+            model = await self.photo_repo.get(photo.id)
+            resp = (
+                self.photo_service.to_response(model)
+                if model
+                else photo
             )
             logger.info("Upload completed: %s for file %s", upload_id, file_id)
             return resp

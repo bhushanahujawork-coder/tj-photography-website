@@ -66,6 +66,7 @@ export interface Photo {
   exif?: ExifData
   folderId?: string
   albumId?: string
+  downloadEnabled?: boolean
 }
 
 export interface ExifData {
@@ -239,6 +240,7 @@ export interface ShareLink {
   url: string
   role: Role
   downloadEnabled: boolean
+  pinCode?: string | null
   expiresAt?: string | null
   accessCount: number
   createdAt: string

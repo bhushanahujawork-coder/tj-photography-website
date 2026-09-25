@@ -48,6 +48,7 @@ interface ApiPhoto {
   dateTaken?: string | null
   folderId?: string | null
   albumId?: string | null
+  downloadEnabled?: boolean | null
 }
 
 function getDateOnly(dateStr: string) {
@@ -139,6 +140,7 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
           } : undefined,
           folderId: p.folderId ?? undefined,
           albumId: p.albumId ?? undefined,
+          downloadEnabled: p.downloadEnabled ?? undefined,
         }))
         setApiPhotos(items)
         setFavorites(new Set(items.filter(i => i.favorite).map(i => i.id)))
@@ -553,6 +555,22 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
       },
     })
   }, [allPhotos, toast])
+
+  const handleSharePhoto = useCallback(async () => {
+    if (!wedding) return
+    const url = `${window.location.origin}/gallery/${wedding.weddingCode}`
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title: wedding.weddingName, url })
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      toast({ title: 'Gallery link copied to clipboard', variant: 'success' })
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      toast({ title: 'Could not share the gallery link', variant: 'error' })
+    }
+  }, [wedding, toast])
 
   const handleHidePhoto = useCallback(async (photoId: string) => {
     try {
@@ -1184,6 +1202,8 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
           onIndexChange={setDetailIndex}
           onFavorite={toggleFavorite}
           onDownload={handleDownload}
+          onShare={handleSharePhoto}
+          onDelete={photoId => { setDetailModalOpen(false); handleDeletePhoto(photoId) }}
         />
 
         <ShareLinkModal
@@ -1314,6 +1334,26 @@ export default function WeddingGalleryPage({ params }: { params: Promise<{ id: s
                   })) : [{ label: 'No folders', value: 'none', onClick: () => {} }]}
                 />
                 <div className="mx-3 my-1 border-t border-border" />
+                <button
+                  onClick={() => {
+                    const photo = contextMenu.photo
+                    const next = photo.downloadEnabled === false
+                    apiFetch(`/api/v1/photos/batch/update`, {
+                      method: 'POST',
+                      body: JSON.stringify({ photo_ids: [photo.id], updates: { download_enabled: next } }),
+                    }).then(() => {
+                      setApiPhotos(prev => prev.map(p =>
+                        p.id === photo.id ? { ...p, downloadEnabled: next } : p
+                      ))
+                      toast({ title: next ? 'Download enabled for this photo' : 'Download disabled for this photo', variant: 'success' })
+                    }).catch(() => toast({ title: 'Could not update download setting', variant: 'error' }))
+                    closeContextMenu()
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-white/5 transition-colors"
+                >
+                  <Icon name="download" size={14} className="text-muted" />
+                  {contextMenu.photo.downloadEnabled === false ? 'Enable Download' : 'Disable Download'}
+                </button>
                 {!hiddenIds.has(contextMenu.photo.id) && (
                   <button
                     onClick={() => handleHidePhoto(contextMenu.photo.id)}

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     OTP_EXPIRE_MINUTES: int = 5
+    # Demo mode: /api/v1/enquiries/otp/send returns the real generated OTP in
+    # `demo_otp` (no SMS provider). MUST be False in production.
+    DEMO_OTP: bool = True
 
     STORAGE_BACKEND: str = "local"
     STORAGE_LOCAL_PATH: str = "./storage"

@@ -1,4 +1,4 @@
-import type { HomeConfig, SectionId } from './types'
+import type { AboutSectionKey, AboutVariant, HomeConfig, SectionId } from './types'
 
 export const TJ_PREVIEW_BRIDGE = 'tj:home'
 
@@ -44,6 +44,7 @@ export type PreviewMessage =
   | { bridge: typeof TJ_PREVIEW_BRIDGE; type: 'dragend'; element: DragElement }
   | { bridge: typeof TJ_PREVIEW_BRIDGE; type: 'filmSelect'; id: string; rect: RectPayload }
   | { bridge: typeof TJ_PREVIEW_BRIDGE; type: 'filmHighlight'; id: string | null }
+  | { bridge: typeof TJ_PREVIEW_BRIDGE; type: 'aboutVariant'; section: AboutSectionKey; variant: AboutVariant }
 
 export function parsePreviewMessage(data: unknown): PreviewMessage | null {
   if (!data || typeof data !== 'object') return null

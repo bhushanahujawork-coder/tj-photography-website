@@ -172,12 +172,22 @@ export function collectReferencedUploads(config: HomeConfig): Set<string> {
   const tryAdd = (src?: string | null) => {
     if (src && isUploadedPath(src)) refs.add(src)
   }
-  const { header, hero, soulCinema, portfolio } = config
+  const { header, hero, soulCinema, portfolio, about } = config
   tryAdd(header.logo.src)
   hero.slides.forEach((s) => tryAdd(s.src))
   tryAdd(soulCinema.videoSrc)
   tryAdd(soulCinema.poster)
   portfolio.images.forEach((img) => tryAdd(img.src))
+  if (about) {
+    tryAdd(about.hero?.image?.src)
+    tryAdd(about.hero?.imageB?.src)
+    tryAdd(about.hero?.imageC?.src)
+    tryAdd(about.founders?.groupImage?.src)
+    tryAdd(about.founders?.groupImageB?.src)
+    tryAdd(about.founders?.groupImageC?.src)
+    about.founders?.members?.forEach((m) => tryAdd(m?.image))
+    about.team?.members?.forEach((m) => tryAdd(m?.image))
+  }
   return refs
 }
 

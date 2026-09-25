@@ -29,6 +29,7 @@ from app.models.storage_usage import StorageUsage
 from app.models.photo_reaction import PhotoReaction
 from app.models.face_profile import FaceProfile
 from app.models.otp_code import OtpCode
+from app.models.enquiry_lead import EnquiryLead
 
 __all__ = [
     "User",
@@ -47,6 +48,7 @@ __all__ = [
     "PhotoReaction",
     "FaceProfile",
     "OtpCode",
+    "EnquiryLead",
     "BaseModel",
     "TimestampMixin",
     "UserRole",

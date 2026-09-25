@@ -27,6 +27,7 @@ export default function robots(): MetadataRoute.Robots {
         '/analytics',
         '/activity',
         '/favorites',
+        '/quote',
         '/errors',
       ],
     },

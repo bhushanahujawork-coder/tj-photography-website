@@ -55,6 +55,27 @@ async def get_optional_user(
     return payload
 
 
+async def get_enquiry_user(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict[str, Any]:
+    """Validate the 30-minute enquiry JWT issued after OTP verification.
+
+    Payload: ``{sub: lead_id, phone, type: "enquiry"}``.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise UnauthorizedError(message="Missing or invalid authorization header")
+    token = authorization.removeprefix("Bearer ")
+    try:
+        payload = decode_token(token)
+    except ValueError:
+        raise UnauthorizedError(message="Invalid or expired token")
+    if payload.get("type") != "enquiry":
+        raise UnauthorizedError(message="Invalid token type")
+    if not payload.get("sub") or not payload.get("phone"):
+        raise UnauthorizedError(message="Invalid enquiry token")
+    return payload
+
+
 def require_role(*roles: str):
     async def role_checker(
         current_user: dict[str, Any] = Depends(get_current_active_user),

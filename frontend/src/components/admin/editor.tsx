@@ -36,8 +36,9 @@ import { FilmContextCard } from './film-context-editor'
 import { FilmStylePopover } from './film-style-popover'
 import { BackgroundNoisePopover } from './background-noise-popover'
 import { CanvasInfoPanel, HeroSectionEditor, PortfolioSectionEditor } from './media-context-editors'
+import { AboutPanel } from './about-panel'
 
-type SectionKey = 'header' | 'hero' | 'soulCinema' | 'portfolio' | 'reviews' | 'contact' | 'footer' | 'films' | 'global' | 'sectionOrder'
+type SectionKey = 'header' | 'hero' | 'soulCinema' | 'portfolio' | 'reviews' | 'contact' | 'footer' | 'films' | 'about' | 'global' | 'sectionOrder'
 
 /** Sections edited canvas-first (click in the preview → contextual editor). */
 type CanvasSection = 'hero' | 'portfolio'
@@ -64,11 +65,15 @@ const SITE_LEVEL: SectionDef[] = [
 ]
 
 /** Separate pages editable from the same editor (each has its own preview route). */
-const PAGES: SectionDef[] = [{ key: 'films', label: 'Films Page', section: null }]
+const PAGES: SectionDef[] = [
+  { key: 'films', label: 'Films Page', section: null },
+  { key: 'about', label: 'About Page', section: null },
+]
 
 const PREVIEW_ROUTES: Record<string, string> = {
   home: '/admin/preview?embed=1',
   films: '/admin/preview-films?embed=1',
+  about: '/admin/preview-about?embed=1',
 }
 
 /**
@@ -644,11 +649,16 @@ export default function AdminEditor() {
         }
       } else if (msg.type === 'dragend') {
         dragRef.current = null
+      } else if (msg.type === 'aboutVariant') {
+        set(
+          msg.section === 'quotes' ? ['about', 'quotesVariant'] : ['about', msg.section, 'variant'],
+          msg.variant
+        )
       }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [applyDrag, pushToFrame, openSectionEditor])
+  }, [applyDrag, pushToFrame, openSectionEditor, set])
 
   /* Scroll the settings panel when switching section / focusing an element */
   useEffect(() => {
@@ -766,7 +776,7 @@ export default function AdminEditor() {
     } else {
       setStyleOpen(false)
     }
-    setFrameSrc(key === 'films' ? PREVIEW_ROUTES.films : PREVIEW_ROUTES.home)
+    setFrameSrc(PREVIEW_ROUTES[key] ?? PREVIEW_ROUTES.home)
     const def = SECTIONS.find((s) => s.key === key)
     if (def?.section && frameRef.current?.contentWindow) {
       sendToFrame(frameRef.current.contentWindow, { bridge: TJ_PREVIEW_BRIDGE, type: 'scrollTo', section: def.section })
@@ -1051,6 +1061,7 @@ export default function AdminEditor() {
               {active === 'footer' && <FooterPanel {...panelProps} />}
               {active === 'global' && <GlobalPanel {...panelProps} />}
               {active === 'sectionOrder' && <SectionOrderPanel {...panelProps} />}
+              {active === 'about' && <AboutPanel {...panelProps} />}
             </div>
           </aside>
         )}

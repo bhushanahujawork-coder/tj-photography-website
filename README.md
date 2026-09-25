@@ -66,7 +66,32 @@ Saare context, decisions, checklists, aur mindset ke liye → `AGENTS.md` dekho.
 
 # CURRENT CHECKPOINT — September 2026
 
-> **Last updated:** 08 Sep 2026
+> **Last updated:** 25 Sep 2026
+
+## Completed & Verified — 25 Sep 2026 (latest session)
+
+* **About page variant system: COMPLETE** — 5 sections (Hero/Quotes/Founders/Approach/Team)
+  × 3 designs (A/B/C) with arrows + dots; localStorage override for public,
+  config-driven for editor preview; DesignPicker + variant media fields in editor.
+* **Gallery build (Kwikpic-style) — DONE & VERIFIED:**
+  * Photo modal: working **Share** + **Delete** buttons; Download hidden when photo
+    `download_enabled=false`.
+  * Gallery context menu: **Enable/Disable Download** toggle (batch API + instant UI).
+  * **Gallery-level download enforcement** backend-side (client/guest/editor blocked
+    on single/batch/ZIP/media/share download; photographer/admin always allowed).
+  * **Settings enforced**: `hide_deleted` (share listings/counts/media),
+    `welcome_message` + `group name/icon` (guest header), `gallery.download_enabled`.
+* **Share modal now hits the real API**: Generate → `POST /weddings/{id}/share-links`,
+  List → `GET /weddings/{id}/share-links`, **Delete** button, optional **4–6 digit PIN**
+  field, real `/s/{code}` URL (hardcoded domain removed).
+* **PIN set UI**: Settings → Gallery → "PIN protection" toggle now shows a Gallery PIN
+  input and saves `pin_code` (earlier only the flag was saved).
+* **Security fix**: public `GET /share-links/{code}` + `GET /share/{code}` no longer
+  echo `pin_code`; regression test added.
+* **Critical bugs fixed**: photo upload was 100% broken (non-existent repo method +
+  2 follow-on crashes); face auto-registration failed on every upload.
+* **Verification**: backend **171/171 tests pass**, `tsc --noEmit` OK, ESLint 0 errors,
+  `http://localhost:3008` → HTTP 200.
 
 ## Completed & Verified
 
@@ -173,13 +198,14 @@ After public website/client-demo polish:
 
 Do NOT automatically start:
 
-* Favorites
-* Reactions
+* Favorites *(done — feature shipped)*
+* Reactions *(done — feature shipped)*
+* PIN enforcement *(done — share PIN + settings PIN working)*
+* download-level permissions *(done — gallery + photo level enforced)*
 * Face AI
 * Selfie Search
 * Liveness
-* PIN enforcement
-* download-level permissions
+* Guest Upload *(excluded from TJ deal)*
 * SaaS/billing
 * native/mobile app
 * CMS database migration

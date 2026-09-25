@@ -13,6 +13,7 @@ const sidebarNav: NavItem[] = [
   { label: 'Gallery', href: '/gallery', icon: 'images' },
   { label: 'Albums', href: '/albums', icon: 'images' },
   { label: 'Faces (AI)', href: '/faces', icon: 'user-plus' },
+  { label: 'Leads', href: '/leads', icon: 'phone' },
   { label: 'Participants', href: '/participants', icon: 'users' },
   { label: 'Downloads', href: '/downloads', icon: 'download' },
   { label: 'Branding', href: '/settings?tab=branding', icon: 'palette' },

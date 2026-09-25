@@ -27,6 +27,17 @@ function allReferencedMedia(config: HomeConfig): string[] {
   push(config.soulCinema.videoSrc)
   push(config.soulCinema.poster)
   config.portfolio.images.forEach((img) => push(img.src))
+  const about = config.about
+  if (about) {
+    push(about.hero?.image?.src)
+    push(about.hero?.imageB?.src)
+    push(about.hero?.imageC?.src)
+    push(about.founders?.groupImage?.src)
+    push(about.founders?.groupImageB?.src)
+    push(about.founders?.groupImageC?.src)
+    about.founders?.members?.forEach((m) => push(m?.image))
+    about.team?.members?.forEach((m) => push(m?.image))
+  }
   return refs
 }
 

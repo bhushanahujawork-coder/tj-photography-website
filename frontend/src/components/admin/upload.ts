@@ -10,7 +10,7 @@ export const VIDEO_MIME = ['video/mp4', 'video/webm', 'video/quicktime']
 
 export async function uploadMedia(
   file: File,
-  kind: 'logo' | 'hero' | 'portfolio' | 'poster' | 'video'
+  kind: 'logo' | 'hero' | 'portfolio' | 'poster' | 'video' | 'about'
 ): Promise<{ src: string; bytes: number; format: string; meta?: MediaMeta }> {
   const fd = new FormData()
   fd.append('file', file)

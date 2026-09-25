@@ -1,5 +1,6 @@
 import { DEFAULT_SECTION_ORDER, type HomeConfig } from './types'
 import { films as defaultFilms } from '@/data/films'
+import { about as defaultAbout } from '@/data/about'
 
 export const HOME_CONFIG_VERSION = 2
 
@@ -154,6 +155,60 @@ overrides: {
       descriptionSize: 13,
       aspect: '4/3',
       gap: 32,
+    },
+  },
+  about: {
+    hero: {
+      image: { src: defaultAbout.hero.image, alt: defaultAbout.hero.imageAlt },
+      imageB: { src: defaultAbout.hero.image, alt: defaultAbout.hero.imageAlt },
+      imageC: { src: defaultAbout.hero.image, alt: defaultAbout.hero.imageAlt },
+      title: defaultAbout.hero.title,
+      subtitle: defaultAbout.hero.subtitle,
+      variant: 0,
+    },
+    quotes: defaultAbout.quotes.map((q) => ({ text: q.text, label: q.label })),
+    quotesVariant: 0,
+    founders: {
+      eyebrow: defaultAbout.founders.eyebrow,
+      heading: defaultAbout.founders.heading,
+      groupImage: {
+        src: defaultAbout.founders.groupImage,
+        alt: defaultAbout.founders.groupImageAlt,
+      },
+      groupImageB: {
+        src: defaultAbout.founders.groupImage,
+        alt: defaultAbout.founders.groupImageAlt,
+      },
+      groupImageC: {
+        src: defaultAbout.founders.groupImage,
+        alt: defaultAbout.founders.groupImageAlt,
+      },
+      members: defaultAbout.founders.members.map((m) => ({
+        name: m.name,
+        role: m.role,
+        bio: m.bio,
+        image: m.image,
+      })),
+      variant: 0,
+    },
+    approach: {
+      eyebrow: defaultAbout.approach.eyebrow,
+      heading: defaultAbout.approach.heading,
+      paragraph: defaultAbout.approach.paragraph,
+      principles: [...defaultAbout.approach.principles],
+      variant: 0,
+    },
+    team: {
+      eyebrow: defaultAbout.team.eyebrow,
+      heading: defaultAbout.team.heading,
+      subtitle: defaultAbout.team.subtitle,
+      members: defaultAbout.team.members.map((m) => ({
+        name: m.name,
+        role: m.role,
+        bio: m.bio,
+        image: m.image,
+      })),
+      variant: 0,
     },
   },
 }

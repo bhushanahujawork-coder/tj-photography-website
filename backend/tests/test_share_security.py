@@ -229,3 +229,54 @@ async def test_share_link_expires_with_future_deadline(
 
     medium = await _public_media(client, code, photo_id)
     assert medium.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_share_link_pin_gate_and_no_pin_leak(
+    client: AsyncClient, test_users, photographer_headers
+):
+    wedding_id = await _create_wedding(client, photographer_headers)
+    photo_id = await _upload_photo(client, photographer_headers, wedding_id)
+
+    create = await _create_share_link(
+        client, photographer_headers, wedding_id, pin_code="1234"
+    )
+    assert create.status_code == 201
+    assert create.json()["pin_code"] == "1234"
+    code = create.json()["code"]
+
+    listed = await client.get(
+        f"/api/v1/weddings/{wedding_id}/share-links", headers=photographer_headers
+    )
+    assert listed.status_code == 200
+    assert any(
+        l["code"] == code and l["pin_code"] == "1234" for l in listed.json()
+    )
+
+    public = await client.get(f"/api/v1/share-links/{code}")
+    assert public.status_code == 200
+    assert public.json()["pin_code"] is None
+
+    locked = await client.get(f"/api/v1/share/{code}")
+    assert locked.status_code == 403
+    assert locked.json()["error"]["code"] == "gallery_pin_required"
+
+    wrong = await client.get(
+        f"/api/v1/share/{code}", headers={"X-Gallery-Pin": "9999"}
+    )
+    assert wrong.status_code == 403
+
+    unlocked = await client.get(
+        f"/api/v1/share/{code}", headers={"X-Gallery-Pin": "1234"}
+    )
+    assert unlocked.status_code == 200
+    assert unlocked.json()["share"]["pin_code"] is None
+
+    media_locked = await _public_media(client, code, photo_id)
+    assert media_locked.status_code == 403
+
+    media_open = await client.get(
+        f"/api/v1/media/share/{code}/photos/{photo_id}/content?size=medium",
+        headers={"X-Gallery-Pin": "1234"},
+    )
+    assert media_open.status_code == 200

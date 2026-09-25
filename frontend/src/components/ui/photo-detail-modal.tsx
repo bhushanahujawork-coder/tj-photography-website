@@ -16,6 +16,8 @@ interface PhotoDetailModalProps {
   onIndexChange?: (index: number) => void
   onFavorite?: (photoId: string) => void
   onDownload?: (photoId: string) => void
+  onShare?: (photoId: string) => void
+  onDelete?: (photoId: string) => void
 }
 
 export function PhotoDetailModal({
@@ -26,6 +28,8 @@ export function PhotoDetailModal({
   onIndexChange,
   onFavorite,
   onDownload,
+  onShare,
+  onDelete,
 }: PhotoDetailModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [zoomLevel, setZoomLevel] = useState(1)
@@ -327,14 +331,16 @@ export function PhotoDetailModal({
                   <div>
                     <h3 className="font-serif text-base text-foreground">Actions</h3>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onDownload?.(currentPhoto.id)}
-                      >
-                        <Icon name="download" size={14} />
-                        Download
-                      </Button>
+                      {currentPhoto.downloadEnabled !== false && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onDownload?.(currentPhoto.id)}
+                        >
+                          <Icon name="download" size={14} />
+                          Download
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -348,11 +354,28 @@ export function PhotoDetailModal({
                         />
                         {currentPhoto.favorite ? 'Favorited' : 'Favorite'}
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onShare?.(currentPhoto.id)}
+                      >
                         <Icon name="share" size={14} />
                         Share
                       </Button>
+                      {onDelete && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => onDelete(currentPhoto.id)}
+                        >
+                          <Icon name="trash" size={14} />
+                          Delete
+                        </Button>
+                      )}
                     </div>
+                    {currentPhoto.downloadEnabled === false && (
+                      <p className="mt-2 text-xs text-muted">Downloads are turned off for this photo.</p>
+                    )}
                   </div>
 
                   {currentPhoto.isHighlight && (

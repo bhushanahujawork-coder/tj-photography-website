@@ -85,7 +85,7 @@ function toCamelCase(key: string): string {
   return key.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
 }
 
-function transformKeys(obj: unknown): unknown {
+export function transformKeys(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map(transformKeys)
   }

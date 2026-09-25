@@ -148,4 +148,14 @@ class WeddingService:
         wedding = await self.wedding_repo.get_by_code(code)
         if not wedding:
             raise NotFoundError(message="Wedding not found")
-        return WeddingResponse.model_validate(wedding)
+        resp = WeddingResponse.model_validate(wedding)
+        # Public lookup: expose the guest-facing gallery flags so the
+        # custom-URL gallery can render welcome text + download affordances.
+        settings = wedding.settings or {}
+        group = settings.get("group") if isinstance(settings.get("group"), dict) else {}
+        gallery = settings.get("gallery") if isinstance(settings.get("gallery"), dict) else {}
+        resp.welcome_message = group.get("welcome_message")
+        resp.group_name = group.get("name")
+        resp.group_icon_url = group.get("icon_url")
+        resp.gallery_download_enabled = bool(gallery.get("download_enabled", True))
+        return resp

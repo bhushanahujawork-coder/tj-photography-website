@@ -326,6 +326,91 @@ function mergeFilms(base: HomeConfig['films'], saved: unknown): HomeConfig['film
   }
 }
 
+function isAboutQuote(v: unknown): v is import('./types').AboutQuoteCfg {
+  return isRecord(v) && isStr(v.text) && isStr(v.label)
+}
+
+function isAboutMember(v: unknown): v is import('./types').AboutMemberCfg {
+  return isRecord(v) && isStr(v.name) && isStr(v.role) && isStr(v.bio) && isStr(v.image)
+}
+
+/** Clamp a saved design-variant selector to 0..2; anything else falls back. */
+function mergeVariant(base: import('./types').AboutVariant, saved: unknown): import('./types').AboutVariant {
+  if (isNum(saved) && Number.isInteger(saved) && saved >= 0 && saved <= 2) return saved as import('./types').AboutVariant
+  return base
+}
+
+/** B/C variant image: saved value when present, otherwise inherit the merged A image. */
+function mergeVariantMedia(fallback: import('./types').MediaRef, saved: unknown): import('./types').MediaRef {
+  if (!isRecord(saved) || typeof saved.src !== 'string') return fallback
+  return mergeMedia(fallback, saved)
+}
+
+/**
+ * About page — per-field fallback to defaults. Saved arrays (quotes, members,
+ * principles) fully replace the defaults when valid so removals persist;
+ * malformed entries fall back to the defaults wholesale.
+ */
+function mergeAbout(base: HomeConfig['about'], saved: unknown): HomeConfig['about'] {
+  if (!isRecord(saved)) return JSON.parse(JSON.stringify(base))
+  const hero = isRecord(saved.hero) ? saved.hero : {}
+  const founders = isRecord(saved.founders) ? saved.founders : {}
+  const approach = isRecord(saved.approach) ? saved.approach : {}
+  const team = isRecord(saved.team) ? saved.team : {}
+
+  const quotes = Array.isArray(saved.quotes)
+    ? saved.quotes.filter(isAboutQuote).map((q) => ({ text: q.text, label: q.label }))
+    : JSON.parse(JSON.stringify(base.quotes))
+
+  const members = (val: unknown, fallback: typeof base.founders.members) =>
+    Array.isArray(val)
+      ? val.filter(isAboutMember).map((m) => ({ name: m.name, role: m.role, bio: m.bio, image: m.image }))
+      : JSON.parse(JSON.stringify(fallback))
+
+  const principles = Array.isArray(approach.principles)
+    ? approach.principles.filter(isStr)
+    : JSON.parse(JSON.stringify(base.approach.principles))
+
+  const heroImage = mergeMedia(base.hero.image, hero.image)
+  const groupImage = mergeMedia(base.founders.groupImage, founders.groupImage)
+
+  return {
+    hero: {
+      image: heroImage,
+      imageB: mergeVariantMedia(heroImage, hero.imageB),
+      imageC: mergeVariantMedia(heroImage, hero.imageC),
+      title: isStr(hero.title) ? hero.title : base.hero.title,
+      subtitle: isStr(hero.subtitle) ? hero.subtitle : base.hero.subtitle,
+      variant: mergeVariant(base.hero.variant, hero.variant),
+    },
+    quotes,
+    quotesVariant: mergeVariant(base.quotesVariant, saved.quotesVariant),
+    founders: {
+      eyebrow: isStr(founders.eyebrow) ? founders.eyebrow : base.founders.eyebrow,
+      heading: isStr(founders.heading) ? founders.heading : base.founders.heading,
+      groupImage,
+      groupImageB: mergeVariantMedia(groupImage, founders.groupImageB),
+      groupImageC: mergeVariantMedia(groupImage, founders.groupImageC),
+      members: members(founders.members, base.founders.members),
+      variant: mergeVariant(base.founders.variant, founders.variant),
+    },
+    approach: {
+      eyebrow: isStr(approach.eyebrow) ? approach.eyebrow : base.approach.eyebrow,
+      heading: isStr(approach.heading) ? approach.heading : base.approach.heading,
+      paragraph: isStr(approach.paragraph) ? approach.paragraph : base.approach.paragraph,
+      principles,
+      variant: mergeVariant(base.approach.variant, approach.variant),
+    },
+    team: {
+      eyebrow: isStr(team.eyebrow) ? team.eyebrow : base.team.eyebrow,
+      heading: isStr(team.heading) ? team.heading : base.team.heading,
+      subtitle: isStr(team.subtitle) ? team.subtitle : base.team.subtitle,
+      members: members(team.members, base.team.members),
+      variant: mergeVariant(base.team.variant, team.variant),
+    },
+  }
+}
+
 function mergeSoulCinemaType(base: HomeConfig['soulCinema']['type'], saved: unknown): HomeConfig['soulCinema']['type'] {
   if (!isRecord(saved)) return base
   const out = { ...base }
@@ -713,6 +798,7 @@ export function mergeConfig(base: HomeConfig, saved: unknown): HomeConfig {
       designerLine: isStr(s.footer.designerLine) ? s.footer.designerLine : base.footer.designerLine,
     },
     films: mergeFilms(base.films, s.films),
+    about: mergeAbout(base.about, (s as { about?: unknown }).about),
   }
 }
 

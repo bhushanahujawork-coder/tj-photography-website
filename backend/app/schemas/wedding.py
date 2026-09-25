@@ -52,6 +52,14 @@ class WeddingResponse(BaseModel):
     updated_at: datetime = Field(description="Last update timestamp")
     published_at: Optional[datetime] = Field(default=None, description="Publication timestamp")
 
+    # Guest-facing gallery flags — populated on public endpoints (by-code,
+    # share resolution) from wedding.settings; defaults keep internal
+    # responses unchanged.
+    welcome_message: Optional[str] = Field(default=None, description="Guest-facing welcome message")
+    group_name: Optional[str] = Field(default=None, description="Guest group display name")
+    group_icon_url: Optional[str] = Field(default=None, description="Guest group icon URL")
+    gallery_download_enabled: bool = Field(default=True, description="Gallery-level download switch")
+
     model_config = {"from_attributes": True}
 
 

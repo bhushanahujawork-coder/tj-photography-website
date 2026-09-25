@@ -29,6 +29,12 @@ class NotFoundError(AppError):
     message = "Resource not found"
 
 
+class BadRequestError(AppError):
+    status_code = 400
+    code = "bad_request"
+    message = "Bad request"
+
+
 class ConflictError(AppError):
     status_code = 409
     code = "conflict"

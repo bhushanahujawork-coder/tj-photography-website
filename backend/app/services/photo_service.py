@@ -89,6 +89,11 @@ class PhotoService:
             for pid in photo_ids
         }
 
+    def to_response(self, photo) -> PhotoResponse:
+        """Public wrapper so sibling services (e.g. UploadService) can build
+        a PhotoResponse from a Photo model without touching a private helper."""
+        return self._photo_to_response(photo)
+
     def _photo_to_response(self, photo, reaction_count: int = 0, reacted_by_me: bool = False) -> PhotoResponse:
         return PhotoResponse(
             id=photo.id,
@@ -190,6 +195,18 @@ class PhotoService:
             raise ForbiddenError(message=f"Permission 'view' denied for role '{link.role}'")
 
         hide_invisible = link.role in ("client", "guest")
+
+        # Group setting: "Hide deleted photos from guests" (default ON).
+        # When the photographer turns it OFF, soft-deleted photos are listed too.
+        wedding = await self.wedding_repo.get(link.wedding_id)
+        group = (
+            wedding.settings.get("group")
+            if wedding and isinstance(wedding.settings, dict)
+            and isinstance(wedding.settings.get("group"), dict)
+            else {}
+        )
+        show_deleted = not bool(group.get("hide_deleted", True))
+
         skip = (filters.page - 1) * filters.page_size
         items, total = await self.photo_repo.get_multi_filtered(
             wedding_id=link.wedding_id,
@@ -199,6 +216,7 @@ class PhotoService:
             favorite=filters.favorite,
             is_highlight=filters.is_highlight,
             is_hidden=False if hide_invisible else filters.is_hidden,
+            include_deleted=show_deleted,
             date_from=filters.date_from,
             date_to=filters.date_to,
             sort_by=filters.sort_by,
@@ -250,22 +268,18 @@ class PhotoService:
         # Register face profile from photo (offline Pillow heuristic, no GPU needed)
         if created_by:
             from app.services.face_service import FaceService
-            from app.core.dependencies import get_db_session
 
-            async with get_db_session() as session:
-                face_service = FaceService(session)
-                try:
-                    raw = await self.photo_repo.get_storage().read(photo.original_path)
-                    if raw:
-                        await face_service.register_photo_face(
-                            photo_id=photo.id,
-                            label=None,
-                            face_box=None,
-                            created_by=created_by,
-                        )
-                        logger.info("Face profile auto-registered for photo: %s", photo.id)
-                except Exception as e:
-                    logger.warning("Face profile registration failed for photo %s: %s", photo.id, e)
+            face_service = FaceService(self.db)
+            try:
+                await face_service.register_photo_face(
+                    photo_id=photo.id,
+                    label=None,
+                    face_box=None,
+                    created_by=created_by,
+                )
+                logger.info("Face profile auto-registered for photo: %s", photo.id)
+            except Exception as e:
+                logger.warning("Face profile registration failed for photo %s: %s", photo.id, e)
 
         return self._photo_to_response(photo)
 
@@ -480,6 +494,22 @@ class PhotoService:
         count, reacted = await self._reaction_stats(photo_id, current_user)
         return self._photo_to_response(updated, count, reacted)
 
+    async def _require_download_access(self, photo, current_user: dict) -> str:
+        """Photo download permission + the gallery-level download switch.
+
+        The photographer/platform admin can always download their own photos;
+        everyone else is blocked when settings → Gallery → downloads are off.
+        """
+        role = await self._require_photo_access(photo, current_user, "download")
+        if role in ("photographer", "admin"):
+            return role
+        wedding = await self.wedding_repo.get(photo.wedding_id)
+        settings = wedding.settings if wedding and isinstance(wedding.settings, dict) else {}
+        gallery = settings.get("gallery") if isinstance(settings.get("gallery"), dict) else {}
+        if not bool(gallery.get("download_enabled", True)):
+            raise ForbiddenError(message="Downloads are disabled for this gallery")
+        return role
+
     async def download_photos_batch(self, photo_ids: list[str], current_user: dict) -> tuple[bytes, str]:
         import io
         import zipfile
@@ -495,7 +525,7 @@ class PhotoService:
                 if not photo or photo.is_deleted:
                     continue
                 try:
-                    await self._require_photo_access(photo, current_user, "download")
+                    await self._require_download_access(photo, current_user)
                 except NotFoundError:
                     continue
                 result = await svc.convert_to_png(photo.original_path)
@@ -510,7 +540,7 @@ class PhotoService:
         photo = await self.photo_repo.get(photo_id)
         if not photo or photo.is_deleted:
             raise NotFoundError(message="Photo not found")
-        await self._require_photo_access(photo, current_user, "download")
+        await self._require_download_access(photo, current_user)
 
         from app.services.image_service import ImageProcessingService
         svc = ImageProcessingService()

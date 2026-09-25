@@ -15,6 +15,8 @@ from app.routers.dashboard import router as dashboard_router
 from app.routers.permissions import router as permissions_router
 from app.routers.faces import router as faces_router
 from app.routers.client import router as client_router
+from app.routers.enquiries import router as enquiries_router
+from app.routers.leads import router as leads_router
 
 __all__ = [
     "auth_router",
@@ -34,4 +36,6 @@ __all__ = [
     "permissions_router",
     "faces_router",
     "client_router",
+    "enquiries_router",
+    "leads_router",
 ]

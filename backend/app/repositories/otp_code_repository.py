@@ -20,6 +20,16 @@ class OtpCodeRepository(BaseRepository[OtpCode]):
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
+    async def get_latest_for_phone(self, phone: str) -> Optional[OtpCode]:
+        """Latest OTP row for a phone regardless of used/expiry (cooldown checks)."""
+        stmt = (
+            select(OtpCode)
+            .where(OtpCode.phone == phone)
+            .order_by(OtpCode.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
     async def invalidate_for_identifier(
         self, phone: str | None = None, email: str | None = None,
     ) -> None:

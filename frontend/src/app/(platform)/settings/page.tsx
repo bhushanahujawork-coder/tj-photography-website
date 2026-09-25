@@ -84,7 +84,7 @@ export default function SettingsPage() {
   const updateGeneral = (key: string, value: string) =>
     setSettings(prev => prev ? { ...prev, general: { ...prev.general, [key]: value } } : prev)
 
-  const updateGallery = (key: string, value: boolean | GalleryVisibility) =>
+  const updateGallery = (key: string, value: boolean | GalleryVisibility | string) =>
     setSettings(prev => prev ? { ...prev, gallery: { ...prev.gallery, [key]: value } } : prev)
 
   const updateDownloads = (key: string, value: boolean) =>
@@ -117,6 +117,7 @@ export default function SettingsPage() {
             anonymous_viewing: settings.gallery.anonymousViewing,
             watermark_enabled: settings.gallery.watermarkEnabled,
             pin_protection: settings.gallery.pinProtection,
+            pin_code: settings.gallery.pinCode || null,
           }),
         }),
         apiFetch('/api/v1/settings/downloads', {
@@ -259,6 +260,16 @@ export default function SettingsPage() {
                     onChange={v => updateGallery('pinProtection', v)}
                     label="PIN protection"
                   />
+                  {settings.gallery.pinProtection && (
+                    <Input
+                      label="Gallery PIN"
+                      value={settings.gallery.pinCode || ''}
+                      onChange={e => updateGallery('pinCode', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="4-6 digit PIN"
+                      inputMode="numeric"
+                      maxLength={6}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

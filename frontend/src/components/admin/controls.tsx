@@ -398,7 +398,7 @@ export function MediaBox({
   isVideo?: boolean
   onReplace: (src: string, meta?: MediaMeta) => void
   onReset: () => void
-  kind: 'logo' | 'hero' | 'portfolio' | 'poster' | 'video'
+  kind: 'logo' | 'hero' | 'portfolio' | 'poster' | 'video' | 'about'
   recommended?: string
   meta?: MediaMeta
   hint?: string

@@ -8,6 +8,7 @@ from app.core.errors import NotFoundError
 from app.core.storage import StorageBackend, get_storage
 from app.repositories.album_repository import AlbumRepository
 from app.repositories.photo_repository import PhotoRepository
+from app.repositories.wedding_repository import WeddingRepository
 from app.services.download_service import DownloadService
 from app.services.permission_service import PermissionService
 
@@ -89,9 +90,15 @@ async def get_photo_content(
     if hidden:
         can_view = False
 
-    download_ok = await _download_allowed(
-        db, photo, await svc.has_permission(photo.wedding_id, role, "download"),
-    )
+    base_ok = await svc.has_permission(photo.wedding_id, role, "download")
+    if base_ok and role not in ("photographer", "admin"):
+        # Gallery-level switch (settings → Gallery) blocks everyone but the
+        # photographer/platform admin.
+        wedding = await WeddingRepository(db).get(photo.wedding_id)
+        if wedding and not DownloadService._gallery_flag(wedding, "download_enabled", True):
+            base_ok = False
+
+    download_ok = await _download_allowed(db, photo, base_ok)
 
     return await _render_photo(
         photo, size, storage,
@@ -122,13 +129,20 @@ async def get_share_photo_content(
     await svc.enforce_share_access(link, current_user=current_user, gallery_pin=gallery_pin)
 
     photo = await PhotoRepository(db).get(photo_id)
-    if not photo or photo.is_deleted or photo.wedding_id != link.wedding_id:
+    if not photo or photo.wedding_id != link.wedding_id:
         raise NotFoundError(message="Photo not found")
+    if photo.is_deleted:
+        # Group setting: "Hide deleted photos from guests" (default ON).
+        wedding = await svc.wedding_repo.get(link.wedding_id)
+        if not wedding or svc._group_flag(wedding, "hide_deleted", True):
+            raise NotFoundError(message="Photo not found")
 
     view_ok = await svc.share_role_has_permission(link, "view")
+    gallery_ok = await svc.gallery_downloads_enabled(link.wedding_id)
     download_ok = await _download_allowed(
         db, photo,
         link.download_enabled
+        and gallery_ok
         and await svc.share_role_has_permission(link, "download"),
     )
     if photo.is_hidden:

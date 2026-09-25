@@ -56,6 +56,10 @@ interface WeddingInfo {
   weddingDate: string
   location: string
   weddingCode: string
+  welcomeMessage?: string | null
+  groupName?: string | null
+  groupIconUrl?: string | null
+  galleryDownloadEnabled?: boolean
 }
 
 interface ShareGalleryInfo {
@@ -67,6 +71,11 @@ interface ShareGalleryInfo {
   }
   downloadAllowed: boolean
   livenessEnabled?: boolean
+  welcomeMessage?: string | null
+  groupName?: string | null
+  groupIconUrl?: string | null
+  hideDeleted?: boolean
+  galleryDownloadEnabled?: boolean
 }
 
 interface PaginatedPhotos<T> {
@@ -235,6 +244,9 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
     role: string
     downloadEnabled: boolean
     downloadAllowed: boolean
+    welcomeMessage?: string | null
+    groupName?: string | null
+    groupIconUrl?: string | null
   } | null>(null)
   const [photos, setPhotos] = useState<ClientPhoto[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -300,6 +312,9 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
             role: gallery.share.role,
             downloadEnabled: !!gallery.share.downloadEnabled,
             downloadAllowed: !!gallery.downloadAllowed,
+            welcomeMessage: gallery.welcomeMessage ?? null,
+            groupName: gallery.groupName ?? null,
+            groupIconUrl: gallery.groupIconUrl ?? null,
           })
           setLivenessRequired(!!gallery.livenessEnabled)
 
@@ -719,9 +734,14 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
   }
 
   const code = wedding?.weddingCode || share?.code || ''
-  const hdAllowed = isShare ? (share?.downloadAllowed ?? false) && (share?.downloadEnabled ?? false) : true
+  const hdAllowed = isShare
+    ? (share?.downloadAllowed ?? false) && (share?.downloadEnabled ?? false)
+    : wedding?.galleryDownloadEnabled !== false
   const canFavorite = true
-  const canDownload = !isShare || hdAllowed
+  const canDownload = hdAllowed
+  const welcomeText = isShare ? (share?.welcomeMessage ?? null) : (wedding?.welcomeMessage ?? null)
+  const groupName = isShare ? (share?.groupName ?? null) : (wedding?.groupName ?? null)
+  const groupIcon = isShare ? (share?.groupIconUrl ?? null) : (wedding?.groupIconUrl ?? null)
   const showingAlbumList = tab === 'albums' && !activeAlbumId
   const availableCount = showingAlbumList
     ? `${albums.length} album${albums.length !== 1 ? 's' : ''}`
@@ -803,6 +823,26 @@ export function ClientGalleryView({ shareCode, weddingCode }: { shareCode?: stri
             </h1>
             {wedding?.weddingName && wedding.brideName && (
               <p className="mt-2 text-sm tracking-wide text-muted">{wedding.weddingName}</p>
+            )}
+            {(groupName || groupIcon) && (
+              <div className="mt-4 inline-flex items-center gap-2.5 rounded-full border border-gold/25 bg-gold/10 px-4 py-1.5">
+                {groupIcon && (
+                  <img
+                    src={groupIcon}
+                    alt=""
+                    className="h-6 w-6 rounded-full object-cover"
+                    loading="lazy"
+                  />
+                )}
+                {groupName && (
+                  <span className="text-xs font-medium tracking-wide text-gold">{groupName}</span>
+                )}
+              </div>
+            )}
+            {welcomeText && (
+              <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-muted sm:text-[15px]">
+                {welcomeText}
+              </p>
             )}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted">
               {wedding?.weddingDate && (

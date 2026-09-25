@@ -117,5 +117,25 @@ class ShareGalleryResponse(BaseModel):
         default=False,
         description="True when the gallery requires a selfie liveness check before guest login",
     )
+    welcome_message: Optional[str] = Field(
+        default=None,
+        description="Guest-facing welcome message from the group settings",
+    )
+    group_name: Optional[str] = Field(
+        default=None,
+        description="Display name of the guest group (falls back to the wedding name)",
+    )
+    group_icon_url: Optional[str] = Field(
+        default=None,
+        description="Optional icon/avatar shown to guests",
+    )
+    hide_deleted: bool = Field(
+        default=True,
+        description="True when soft-deleted photos must stay hidden from guests",
+    )
+    gallery_download_enabled: bool = Field(
+        default=True,
+        description="Gallery-level download switch from wedding settings",
+    )
 
     model_config = {"from_attributes": True}
