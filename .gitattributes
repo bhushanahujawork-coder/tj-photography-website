@@ -1,0 +1,4 @@
+# Shell scripts and Dockerfiles must stay LF in the repo and on checkout —
+# a single CRLF makes `#!/bin/bash` fail inside Linux containers.
+*.sh        text eol=lf
+Dockerfile  text eol=lf

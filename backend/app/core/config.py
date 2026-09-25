@@ -39,7 +39,12 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"}
     IMAGE_SIZES: dict[str, str] = {"original": "", "medium": "1200", "thumbnail": "400"}
 
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3005", "http://localhost:3008"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3005",
+        "http://localhost:3008",
+        "https://tj-photography-website.vercel.app",
+    ]
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"
 
@@ -65,6 +70,13 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, v: str, info) -> str:
+        # Hosted providers (Render/Neon/Supabase/Railway) hand out bare
+        # `postgres://` / `postgresql://` URLs — SQLAlchemy's async engine
+        # only accepts the `postgresql+asyncpg://` driver form.
+        if v.startswith("postgres://"):
+            v = "postgresql+asyncpg://" + v[len("postgres://"):]
+        elif v.startswith("postgresql://"):
+            v = "postgresql+asyncpg://" + v[len("postgresql://"):]
         if info.data.get("ENVIRONMENT") == "production":
             if "postgres:postgres" in v:
                 raise ValueError(

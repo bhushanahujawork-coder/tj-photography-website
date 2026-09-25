@@ -1,0 +1,43 @@
+# Render blueprint — FastAPI backend + managed PostgreSQL.
+#
+# Dashboard → New → Blueprint → pick this repo (root). Render reads this file
+# and creates the API service + database together.
+#
+# After the first deploy, put the service URL (e.g. https://tj-photography-api.onrender.com)
+# into Vercel → Project → Settings → Environment Variables → NEXT_PUBLIC_API_URL
+# and redeploy the frontend.
+
+services:
+  - type: web
+    name: tj-photography-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tj-photography-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: '["https://tj-photography-website.vercel.app","http://localhost:3008"]'
+      # No SMS provider wired yet — OTP is returned in the API response so the
+      # quotation flow works end-to-end. Flip to "false" once SMS is live.
+      - key: DEMO_OTP
+        value: "true"
+      - key: STORAGE_BACKEND
+        value: local
+      - key: LOG_LEVEL
+        value: INFO
+
+databases:
+  - name: tj-photography-db
+    plan: free
+    databaseName: tj_photography
+    user: tjphotography

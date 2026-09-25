@@ -1,11 +1,37 @@
 #!/bin/bash
 set -e
 
+# Hosted platforms provide a single DATABASE_URL (sometimes bare
+# `postgres://`). Derive the individual psql connection params from it so the
+# same entrypoint works locally and in production.
+if [ -n "${DATABASE_URL:-}" ] && [ -z "${DB_HOST:-}" ]; then
+  DB_CONN=$(python - "$DATABASE_URL" <<'PY'
+import re, sys
+url = sys.argv[1]
+url = re.sub(r'^postgres(ql)?(\+asyncpg)?://', '', url)
+creds, _, rest = url.rpartition('@')
+user, _, password = creds.partition(':')
+hostport, _, database = rest.partition('/')
+host, _, port = hostport.partition(':')
+print(user)
+print(password)
+print(host)
+print(port or '5432')
+print(database.split('?')[0])
+PY
+)
+  DB_USER=$(echo "$DB_CONN" | sed -n 1p)
+  DB_PASSWORD=$(echo "$DB_CONN" | sed -n 2p)
+  DB_HOST=$(echo "$DB_CONN" | sed -n 3p)
+  DB_PORT=$(echo "$DB_CONN" | sed -n 4p)
+  DB_NAME=$(echo "$DB_CONN" | sed -n 5p)
+fi
+
 DB_HOST="${DB_HOST:-postgres}"
 DB_PORT="${DB_PORT:-5432}"
 DB_USER="${DB_USER:-tjphotography}"
 DB_NAME="${DB_NAME:-tj_photography}"
-DB_PASSWORD="${POSTGRES_PASSWORD:-changeme}"
+DB_PASSWORD="${DB_PASSWORD:-${POSTGRES_PASSWORD:-changeme}}"
 
 echo "Waiting for PostgreSQL to become available..."
 for i in $(seq 1 30); do
